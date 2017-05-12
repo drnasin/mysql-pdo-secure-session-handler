@@ -4,10 +4,10 @@
  * Copyright (c) 2017. All rights reserved.                                      *
  *                                                                               *
  * Project Name: Session Save Handler                                            *
- * Repository: https://github.com/drnasin/middleware-collection                  *
+ * Repository: https://github.com/drnasin/db-session-save-handler-with-encryption*
  *                                                                               *
  * File: SaveHandler.php                                                         *
- * Last Modified: 13.5.2017 0:44                                                 *
+ * Last Modified: 13.5.2017 0:52                                                 *
  *                                                                               *
  * The MIT License                                                               *
  *                                                                               *
