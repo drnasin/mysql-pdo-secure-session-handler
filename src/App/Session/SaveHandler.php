@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/db-session-save-handler-with-encryption*
  *                                                                               *
  * File: SaveHandler.php                                                         *
- * Last Modified: 15.5.2017 11:48                                                *
+ * Last Modified: 15.5.2017 11:51                                                *
  *                                                                               *
  * The MIT License                                                               *
  *                                                                               *
@@ -132,7 +132,9 @@ class SessionHandler implements \SessionHandlerInterface
      */
     public function write($id, $data) : bool
     {
-        $sql = $this->pdo->prepare("SELECT EXISTS(SELECT 1 FROM {$this->sessionTableName} WHERE session_id = :session_id) AS session_exists");
+        $sql = $this->pdo->prepare("SELECT 
+                                      EXISTS(SELECT 1 FROM {$this->sessionTableName} WHERE session_id = :session_id)
+                                    AS session_exists");
         $sql->execute([
             'session_id' => $id
         ]);
