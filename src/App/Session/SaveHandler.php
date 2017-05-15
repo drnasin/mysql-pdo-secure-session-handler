@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/db-session-save-handler-with-encryption*
  *                                                                               *
  * File: SaveHandler.php                                                         *
- * Last Modified: 13.5.2017 0:52                                                 *
+ * Last Modified: 15.5.2017 11:48                                                *
  *                                                                               *
  * The MIT License                                                               *
  *                                                                               *
@@ -30,11 +30,12 @@
  * THE SOFTWARE.                                                                 *
  *********************************************************************************/
 
-namespace App;
+namespace App\Session;
 
 /**
- * Custom database session save handler with encrypted session data
- * @package App
+ * Class Session Save Handler.
+ * Custom database session save handler with encrypted session data using PDO.
+ * @package App\Session
  * @author Ante Drnasin
  */
 class SessionHandler implements \SessionHandlerInterface
@@ -43,7 +44,7 @@ class SessionHandler implements \SessionHandlerInterface
      * Database connection
      * @var \PDO
      */
-    protected $dbAdapter;
+    protected $pdo;
     /**
      * Name of the DB table which handles the sessions
      * @var string
@@ -58,58 +59,66 @@ class SessionHandler implements \SessionHandlerInterface
     /**
      * SessionHandler constructor.
      *
-     * @param \PDO $dbAdapter
-     * @param      $sessionTable
+     * @param \PDO   $pdo
+     * @param string $sessionTableName
      */
-    public function __construct($dbAdapter, $sessionTableName)
+    public function __construct(\PDO $pdo, string $sessionTableName)
     {
-        $this->dbAdapter = $dbAdapter;
+        $this->pdo = $pdo;
         $this->sessionTableName = $sessionTableName;
-        register_shutdown_function("session_write_close");
+        register_shutdown_function('session_write_close');
     }
 
     /**
-     * Closes the session. Not needed.
-     * @return true
+     * Closes the session.
+     * Not needed. We are using database.
+     * @return bool
      */
-    public function close()
+    public function close() : bool
     {
         return true;
     }
 
     /**
-     * Opens the session. Not needed
+     * Opens the session.
+     * Not needed. We are using database.
      *
      * @param string $save_path
      * @param string $session_id
      *
-     * @return true
+     * @return bool
      */
-    public function open($save_path, $session_id)
+    public function open($save_path, $session_id) : bool
     {
         return true;
     }
 
     /**
-     * Read the session, decrypt the data and return it
+     * Read the session, decrypt the data and return it.
      *
-     * @param int session id
+     * @param int $id session id
      *
-     * @return string|false
+     * @return string
      */
-    public function read($id)
+    public function read($id) : string
     {
-        $sql = "SELECT session_data FROM {$this->sessionTableName} WHERE session_id = '{$id}' AND (modified + INTERVAL lifetime SECOND > TIME()) LIMIT 1";
-        $result = $this->dbAdapter->query($sql);
+        $sql = $this->pdo->prepare("SELECT session_data
+                                    FROM {$this->sessionTableName}
+                                    WHERE session_id = :session_id 
+                                    AND (modified + INTERVAL lifetime SECOND > TIME())
+                                    LIMIT 1");
+        $result = $sql->execute([
+            'session_id' => $id
+        ]);
 
         if ($result) {
-            if ($result->rowCount()) {
-                return base64_decode($result->fetchObject()->session_data);
+            if ($sql->rowCount()) {
+                return base64_decode($sql->fetchObject()->session_data);
             } else {
-                return false;
+                return '';
             }
         } else {
-            return false;
+            return '';
         }
     }
 
@@ -119,47 +128,42 @@ class SessionHandler implements \SessionHandlerInterface
      * @param int    $id session id
      * @param string $data session data
      *
-     * @return \PDOStatement
+     * @return bool
      */
-    public function write($id, $data)
+    public function write($id, $data) : bool
     {
-        // escape the data here. Use your own function
-        $data = $this->dbAdapter->escape_string($data);
+        $sql = $this->pdo->prepare("SELECT EXISTS(SELECT 1 FROM {$this->sessionTableName} WHERE session_id = :session_id) AS session_exists");
+        $sql->execute([
+            'session_id' => $id
+        ]);
 
-        $sql = sprintf("SELECT session_id FROM %s WHERE session_id = '%s'", $this->sessionTableName, $id);
-
-        if ($this->dbAdapter->query($sql)->num_rows) {
-            $sql = sprintf("UPDATE %s SET modified = '%s',session_data = '%s' WHERE session_id = '%s'",
-                $this->sessionTableName, time(), base64_encode($data), $id);
-
-            return $this->dbAdapter->query($sql);
+        if (boolval($sql->fetchObject()->session_exists)) {
+            return $this->pdo->prepare("UPDATE {$this->sessionTableName} 
+                                        SET modified = CURRENT_TIMESTAMP,
+                                            session_data = :session_data
+                                      WHERE session_id = :session_id")->execute([
+                'session_data' => base64_encode($data),
+                'session_id'   => $id
+            ]);
         }
-
-        $sql = sprintf("INSERT INTO %s (session_id, modified, session_data) VALUES('%s', '%s', '%s')",
-            $this->sessionTableName, $id, time(), base64_encode($data));
-
-        return $this->dbAdapter->query($sql);
     }
 
     /**
-     * Destoroy the session
-     *
-     * @param int session id
+     * @param string $id
      *
      * @return bool
      */
-    public function destroy($id)
+    public function destroy($id) : bool
     {
-        $sql = sprintf("DELETE FROM %s WHERE 'session_id' = '%s'", $this->sessionTableName,
-            $this->dbAdapter->escape_string($id));
-
-        return $this->dbAdapter->query($sql);
+        return $this->pdo->prepare("DELETE FROM {$this->sessionTableName} WHERE 'session_id' = :session_id")->execute([
+            'session_id' => $id
+        ]);
     }
 
     /**
      * Garbage Collector
      *
-     * @param int lifetime (sec.)
+     * @param int $max (sec.)
      *
      * @return bool
      * @see   session.gc_divisor 100
@@ -168,11 +172,13 @@ class SessionHandler implements \SessionHandlerInterface
      * @usage execution rate 1/100
      * (session.gc_probability/session.gc_divisor)
      */
-    public function gc($max)
+    public function gc($max) : bool
     {
         $sql = sprintf("DELETE FROM %s WHERE modified < '%s'", $this->sessionTableName, time() - intval($max));
 
-        return $this->dbAdapter->query($sql);
+        $result = $this->pdo->query($sql);
+
+        return is_object($result);
     }
 }
 

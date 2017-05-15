@@ -1,0 +1,14 @@
+{
+  "name": "database-session-save-handler",
+  "version": "1.0.0",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Ante Drnasin",
+      "email": "ante.drnasin@gmail.com"
+    }
+  ],
+  "require": {
+    "php": ">=7.1"
+  }
+}
