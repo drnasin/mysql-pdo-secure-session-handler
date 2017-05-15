@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/db-session-save-handler-with-encryption*
  *                                                                               *
  * File: SaveHandler.php                                                         *
- * Last Modified: 15.5.2017 13:19                                                *
+ * Last Modified: 15.5.2017 17:46                                                *
  *                                                                               *
  * The MIT License                                                               *
  *                                                                               *
@@ -50,11 +50,6 @@ class SessionHandler implements \SessionHandlerInterface
      * @var string
      */
     protected $sessionTableName;
-    /**
-     * Session lifetime (for gc) in seconds
-     * @var int
-     */
-    protected $lifetime;
 
     /**
      * SessionHandler constructor.
