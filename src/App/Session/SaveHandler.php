@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/db-session-save-handler-with-encryption*
  *                                                                               *
  * File: SaveHandler.php                                                         *
- * Last Modified: 15.5.2017 11:56                                                *
+ * Last Modified: 15.5.2017 13:19                                                *
  *                                                                               *
  * The MIT License                                                               *
  *                                                                               *
@@ -111,12 +111,8 @@ class SessionHandler implements \SessionHandlerInterface
             'session_id' => $id
         ]);
 
-        if ($result) {
-            if ($sql->rowCount()) {
-                return base64_decode($sql->fetchObject()->session_data);
-            } else {
-                return '';
-            }
+        if ($result && $sql->rowCount()) {
+            return base64_decode($sql->fetchObject()->session_data);
         } else {
             return '';
         }
@@ -176,9 +172,10 @@ class SessionHandler implements \SessionHandlerInterface
      */
     public function gc($max) : bool
     {
-        $sql = sprintf("DELETE FROM %s WHERE modified < '%s'", $this->sessionTableName, time() - intval($max));
-        $result = $this->pdo->query($sql);
-        return boolval($result instanceof \PDOStatement);
+        return $this->pdo->prepare("DELETE FROM {$this->sessionTableName} WHERE modified < :modified")
+                         ->execute([
+                'modified' => time() - intval($max)
+            ]);
     }
 }
 
