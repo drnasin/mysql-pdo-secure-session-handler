@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/db-session-save-handler-with-encryption*
  *                                                                               *
  * File: SessionHandler.php                                                      *
- * Last Modified: 17.5.2017 13:29                                                *
+ * Last Modified: 17.5.2017 19:57                                                *
  *                                                                               *
  * The MIT License                                                               *
  *                                                                               *
@@ -35,6 +35,7 @@ namespace App\Session;
 /**
  * Class Session Save Handler.
  * Custom database session save handler with encrypted session data using PDO.
+ * Lifetime of a session can be "per session" base!
  * @package App\Session
  * @author Ante Drnasin
  */
@@ -61,7 +62,6 @@ class SessionHandler implements \SessionHandlerInterface
     {
         $this->pdo = $pdo;
         $this->sessionTableName = $sessionTableName;
-        register_shutdown_function('session_write_close');
     }
 
     /**
@@ -71,7 +71,20 @@ class SessionHandler implements \SessionHandlerInterface
      */
     public function close() : bool
     {
-        return true;
+        return $this->gc();
+    }
+
+    /**
+     * Garbage Collector
+     *
+     * @param int $max (sec.)
+     *
+     * @return bool
+     */
+    public function gc($max = 0) : bool
+    {
+        return $this->pdo->prepare("DELETE FROM {$this->sessionTableName} WHERE (modified + INTERVAL lifetime SECOND) < NOW()")
+                         ->execute();
     }
 
     /**
@@ -100,10 +113,10 @@ class SessionHandler implements \SessionHandlerInterface
         $sql = $this->pdo->prepare("SELECT session_data
                                     FROM {$this->sessionTableName}
                                     WHERE session_id = :session_id 
-                                    AND (modified + INTERVAL lifetime SECOND > TIME())
-                                    LIMIT 1");
+                                    AND (modified + INTERVAL lifetime SECOND > NOW())");
+
         $result = $sql->execute([
-            'session_id' => $id
+            'session_id' => $id,
         ]);
 
         if ($result && $sql->rowCount()) {
@@ -123,22 +136,14 @@ class SessionHandler implements \SessionHandlerInterface
      */
     public function write($id, $data) : bool
     {
-        $sql = $this->pdo->prepare("SELECT 
-                                      EXISTS(SELECT 1 FROM {$this->sessionTableName} WHERE session_id = :session_id)
-                                    AS session_exists");
-        $sql->execute([
-            'session_id' => $id
-        ]);
+        $sql = $this->pdo->prepare("REPLACE INTO {$this->sessionTableName} (session_id, modified, session_data, lifetime) 
+                                    VALUES(:session_id, NOW(), :session_data, :lifetime)");
 
-        if (boolval($sql->fetchObject()->session_exists)) {
-            return $this->pdo->prepare("UPDATE {$this->sessionTableName} 
-                                        SET modified = CURRENT_TIMESTAMP,
-                                            session_data = :session_data
-                                      WHERE session_id = :session_id")->execute([
-                'session_data' => base64_encode($data),
-                'session_id'   => $id
-            ]);
-        }
+        return $sql->execute([
+            'session_id'   => $id,
+            'session_data' => base64_encode($data),
+            'lifetime'     => ini_get('session.gc_maxlifetime')
+        ]);
     }
 
     /**
@@ -148,28 +153,8 @@ class SessionHandler implements \SessionHandlerInterface
      */
     public function destroy($id) : bool
     {
-        return $this->pdo->prepare("DELETE FROM {$this->sessionTableName} WHERE 'session_id' = :session_id")->execute([
+        return $this->pdo->prepare("DELETE FROM {$this->sessionTableName} WHERE session_id = :session_id")->execute([
             'session_id' => $id
         ]);
-    }
-
-    /**
-     * Garbage Collector
-     *
-     * @param int $max (sec.)
-     *
-     * @return bool
-     * @see   session.gc_divisor 100
-     * @see   session.gc_maxlifetime 1440
-     * @see   session.gc_probability 1
-     * @usage execution rate 1/100
-     * (session.gc_probability/session.gc_divisor)
-     */
-    public function gc($max) : bool
-    {
-        return $this->pdo->prepare("DELETE FROM {$this->sessionTableName} WHERE modified < :modified")
-                         ->execute([
-                'modified' => time() - intval($max)
-            ]);
     }
 }
