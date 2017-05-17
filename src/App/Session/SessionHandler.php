@@ -6,8 +6,8 @@
  * Project Name: Session Save Handler                                            *
  * Repository: https://github.com/drnasin/db-session-save-handler-with-encryption*
  *                                                                               *
- * File: SaveHandler.php                                                         *
- * Last Modified: 15.5.2017 17:46                                                *
+ * File: SessionHandler.php                                                      *
+ * Last Modified: 17.5.2017 13:29                                                *
  *                                                                               *
  * The MIT License                                                               *
  *                                                                               *
@@ -173,8 +173,3 @@ class SessionHandler implements \SessionHandlerInterface
             ]);
     }
 }
-
-
-
-
-
