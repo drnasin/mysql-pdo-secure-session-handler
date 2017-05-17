@@ -3,7 +3,7 @@
   "version": "1.5.0",
   "license": "MIT",
   "type": "library",
-  "description": "MySQL PDO PHP Session Handler with data encryption",
+  "description": "Mysql PDO custom session save handler with session data encryption.",
   "keywords": [
     "php",
     "mysql",
