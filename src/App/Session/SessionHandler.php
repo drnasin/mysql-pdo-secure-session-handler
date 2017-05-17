@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/db-session-save-handler-with-encryption*
  *                                                                               *
  * File: SessionHandler.php                                                      *
- * Last Modified: 17.5.2017 19:57                                                *
+ * Last Modified: 17.5.2017 20:39                                                *
  *                                                                               *
  * The MIT License                                                               *
  *                                                                               *
@@ -66,7 +66,9 @@ class SessionHandler implements \SessionHandlerInterface
 
     /**
      * Closes the session.
-     * Not needed. We are using database.
+     * Not needed. We are using database so let's
+     * use this opportunity to call the garbage collector.
+     *
      * @return bool
      */
     public function close() : bool
@@ -75,7 +77,8 @@ class SessionHandler implements \SessionHandlerInterface
     }
 
     /**
-     * Garbage Collector
+     * Garbage Collector.
+     * Life time is in the database!
      *
      * @param int $max (sec.)
      *
@@ -89,7 +92,6 @@ class SessionHandler implements \SessionHandlerInterface
 
     /**
      * Opens the session.
-     * Not needed. We are using database.
      *
      * @param string $save_path
      * @param string $session_id
