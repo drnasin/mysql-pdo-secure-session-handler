@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="utf-8" ?>
 <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   ~ Created by Ante Drnasin - http://www.drnasin.com                             ~
   ~ Copyright (c) 2017. All rights reserved.                                     ~
@@ -6,7 +7,7 @@
   ~ Repository: https://github.com/drnasin/db-session-save-handler-with-encryption
   ~                                                                              ~
   ~ File: phpunit.xml                                                            ~
-  ~ Last Modified: 17.5.2017 13:37                                               ~
+  ~ Last Modified: 17.5.2017 13:41                                               ~
   ~                                                                              ~
   ~ The MIT License                                                              ~
   ~                                                                              ~
@@ -28,7 +29,6 @@
   ~ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN    ~
   ~ THE SOFTWARE.                                                                ~
   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
-
 <phpunit colors="true" strict="true" bootstrap="../vendor/autoload.php" beStrictAboutTestsThatDoNotTestAnything="true">
     <testsuites>
         <testsuite name="Session Handler tests">
