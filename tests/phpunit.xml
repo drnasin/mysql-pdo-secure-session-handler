@@ -6,7 +6,7 @@
   ~ Repository: https://github.com/drnasin/db-session-save-handler-with-encryption
   ~                                                                              ~
   ~ File: phpunit.xml                                                            ~
-  ~ Last Modified: 17.5.2017 13:34                                               ~
+  ~ Last Modified: 17.5.2017 13:37                                               ~
   ~                                                                              ~
   ~ The MIT License                                                              ~
   ~                                                                              ~
@@ -29,3 +29,10 @@
   ~ THE SOFTWARE.                                                                ~
   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
 
+<phpunit colors="true" strict="true" bootstrap="../vendor/autoload.php" beStrictAboutTestsThatDoNotTestAnything="true">
+    <testsuites>
+        <testsuite name="Session Handler tests">
+            <directory>./</directory>
+        </testsuite>
+    </testsuites>
+</phpunit>

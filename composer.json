@@ -23,5 +23,8 @@
     "psr-4": {
       "App\\": "src/App/"
     }
+  },
+  "scripts": {
+    "test": "phpunit -c tests/phpunit.xml"
   }
 }
