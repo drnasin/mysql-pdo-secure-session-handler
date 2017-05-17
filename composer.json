@@ -1,11 +1,25 @@
 {
-  "name": "database-session-save-handler",
-  "version": "1.0.0",
+  "name": "drnasin/db-session-save-handler-with-encryption",
+  "version": "1.5.0",
   "license": "MIT",
+  "type": "library",
+  "description": "MySQL PDO PHP Session Handler with data encryption",
+  "keywords": [
+    "php",
+    "mysql",
+    "session",
+    "pdo",
+    "session handler",
+    "encryption",
+    "encrypted",
+    "session data"
+  ],
+  "homepage": "https://github.com/drnasin/db-session-save-handler-with-encryption",
   "authors": [
     {
       "name": "Ante Drnasin",
-      "email": "ante.drnasin@gmail.com"
+      "email": "ante.drnasin@gmail.com",
+      "homepage": "http://www.drnasin.com"
     }
   ],
   "require": {
