@@ -4,10 +4,10 @@
  * Copyright (c) 2017. All rights reserved.                                       *
  *                                                                                *
  * Project Name: Session Save Handler                                             *
- * Repository: https://github.com/drnasin/db-session-save-handler-with-encryption *
+ * Repository: https://github.com/drnasin/mysql-pdo-session-save-handler          *
  *                                                                                *
  * File: SessionHandlerTest.php                                                   *
- * Last Modified: 17.5.2017 21:27                                                 *
+ * Last Modified: 17.5.2017 21:32                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
