@@ -6,7 +6,7 @@
 CREATE TABLE `sessions` (
   `session_id` varchar(63) NOT NULL,
   `session_data` text NOT NULL,
-  `modified` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `modified` timestamp NOT NULL,
   `lifetime` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
