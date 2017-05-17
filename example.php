@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/db-session-save-handler-with-encryption*
  *                                                                               *
  * File: example.php                                                             *
- * Last Modified: 17.5.2017 14:39                                                *
+ * Last Modified: 17.5.2017 19:35                                                *
  *                                                                               *
  * The MIT License                                                               *
  *                                                                               *
@@ -47,7 +47,7 @@ $dsn = sprintf('mysql:host=%s;dbname=%s;port=%d;charset=%s', $dbSettings['host']
     $dbSettings['port'], $dbSettings['charset']);
 
 $pdo = new PDO($dsn, $dbSettings['username'], $dbSettings['password'], [
-    PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+//    PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
     PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_OBJ
 ]);
 
@@ -55,4 +55,7 @@ $handler = new \App\Session\SessionHandler($pdo, $sessionTableName);
 session_set_save_handler($handler, true);
 session_start();
 
-$_SESSION['test'] = 12;
+//$_SESSION['test'] = "our secret data";
+//print($_SESSION['test']);
+$_SESSION['test2'] = "our secret data 2";
+print($_SESSION['test2']);
