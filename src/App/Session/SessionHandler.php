@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/db-session-save-handler-with-encryption *
  *                                                                                *
  * File: SessionHandler.php                                                       *
- * Last Modified: 17.5.2017 20:41                                                 *
+ * Last Modified: 17.5.2017 20:46                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -58,7 +58,7 @@ class SessionHandler implements \SessionHandlerInterface
      * @param \PDO   $pdo
      * @param string $sessionTableName
      */
-    public function __construct(\PDO $pdo, string $sessionTableName)
+    public function __construct(\PDO $pdo, $sessionTableName)
     {
         $this->pdo = $pdo;
         $this->sessionTableName = $sessionTableName;
@@ -68,10 +68,9 @@ class SessionHandler implements \SessionHandlerInterface
      * Closes the session.
      * Not needed. We are using database so let's
      * use this opportunity to call the garbage collector.
-     *
      * @return bool
      */
-    public function close() : bool
+    public function close()
     {
         return $this->gc();
     }
@@ -84,7 +83,7 @@ class SessionHandler implements \SessionHandlerInterface
      *
      * @return bool
      */
-    public function gc($max = 0) : bool
+    public function gc($max = 0)
     {
         return $this->pdo->prepare("DELETE FROM {$this->sessionTableName} WHERE (modified + INTERVAL lifetime SECOND) < NOW()")
                          ->execute();
@@ -98,7 +97,7 @@ class SessionHandler implements \SessionHandlerInterface
      *
      * @return bool
      */
-    public function open($save_path, $session_id) : bool
+    public function open($save_path, $session_id)
     {
         return true;
     }
@@ -110,7 +109,7 @@ class SessionHandler implements \SessionHandlerInterface
      *
      * @return string
      */
-    public function read($id) : string
+    public function read($id)
     {
         $sql = $this->pdo->prepare("SELECT session_data
                                     FROM {$this->sessionTableName}
@@ -136,7 +135,7 @@ class SessionHandler implements \SessionHandlerInterface
      *
      * @return bool
      */
-    public function write($id, $data) : bool
+    public function write($id, $data)
     {
         $sql = $this->pdo->prepare("REPLACE INTO {$this->sessionTableName} (session_id, modified, session_data, lifetime) 
                                     VALUES(:session_id, NOW(), :session_data, :lifetime)");
@@ -153,7 +152,7 @@ class SessionHandler implements \SessionHandlerInterface
      *
      * @return bool
      */
-    public function destroy($id) : bool
+    public function destroy($id)
     {
         return $this->pdo->prepare("DELETE FROM {$this->sessionTableName} WHERE session_id = :session_id")->execute([
             'session_id' => $id
