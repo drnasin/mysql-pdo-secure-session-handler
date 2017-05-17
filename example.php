@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/db-session-save-handler-with-encryption*
  *                                                                               *
  * File: example.php                                                             *
- * Last Modified: 17.5.2017 20:28                                                *
+ * Last Modified: 17.5.2017 20:30                                                *
  *                                                                               *
  * The MIT License                                                               *
  *                                                                               *
@@ -47,7 +47,6 @@ $dsn = sprintf('mysql:host=%s;dbname=%s;port=%d;charset=%s', $dbSettings['host']
     $dbSettings['port'], $dbSettings['charset']);
 
 $pdo = new PDO($dsn, $dbSettings['username'], $dbSettings['password'], [
-    PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
     PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_OBJ
 ]);
 
