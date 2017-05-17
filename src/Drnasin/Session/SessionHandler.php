@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/db-session-save-handler-with-encryption *
  *                                                                                *
  * File: SessionHandler.php                                                       *
- * Last Modified: 17.5.2017 20:46                                                 *
+ * Last Modified: 17.5.2017 21:27                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -30,13 +30,13 @@
  * THE SOFTWARE.                                                                  *
  **********************************************************************************/
 
-namespace App\Session;
+namespace Drnasin\Session;
 
 /**
  * Class Session Save Handler.
  * Custom database session save handler with encrypted session data using PDO.
  * Lifetime of a session can be "per session" base!
- * @package App\Session
+ * @package Drnasin\Session
  * @author Ante Drnasin
  */
 class SessionHandler implements \SessionHandlerInterface

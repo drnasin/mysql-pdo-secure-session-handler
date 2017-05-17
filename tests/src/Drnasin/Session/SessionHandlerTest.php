@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/db-session-save-handler-with-encryption *
  *                                                                                *
  * File: SessionHandlerTest.php                                                   *
- * Last Modified: 17.5.2017 20:41                                                 *
+ * Last Modified: 17.5.2017 21:27                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -30,10 +30,16 @@
  * THE SOFTWARE.                                                                  *
  **********************************************************************************/
 
-namespace App\Session;
+namespace Drnasin\Session;
 
 use PHPUnit\Framework\TestCase;
 
+/**
+ * Class SessionHandlerTest
+ * @package Drnasin\Session
+ * @author  Ante Drnasin
+ * @link    https://www.drnasin.com
+ */
 class SessionHandlerTest extends TestCase
 {
 }
