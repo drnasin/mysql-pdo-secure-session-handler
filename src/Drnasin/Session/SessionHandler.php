@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-session-save-handler          *
  *                                                                                *
  * File: SessionHandler.php                                                       *
- * Last Modified: 18.5.2017 21:13                                                 *
+ * Last Modified: 18.5.2017 21:15                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -84,16 +84,6 @@ class SessionHandler implements \SessionHandlerInterface
     }
 
     /**
-     * Closes the session.
-     *
-     * @return bool
-     */
-    public function close()
-    {
-        return true;
-    }
-
-    /**
      * Garbage Collector.
      * Life time is in the database!
      *
@@ -105,6 +95,15 @@ class SessionHandler implements \SessionHandlerInterface
     {
         return $this->pdo->prepare("DELETE FROM {$this->sessionTableName} WHERE (modified + INTERVAL lifetime SECOND) < NOW()")
                          ->execute();
+    }
+
+    /**
+     * Closes the session.
+     * @return bool
+     */
+    public function close()
+    {
+        return true;
     }
 
     /**
@@ -143,6 +142,11 @@ class SessionHandler implements \SessionHandlerInterface
         return $this->pkcs7_unpad(openssl_decrypt($data, 'AES-256-CBC', $this->secretKey, 0, $iv));
     }
 
+    /**
+     * @param $data
+     *
+     * @return bool|string
+     */
     protected function pkcs7_unpad($data)
     {
         return substr($data, 0, -ord($data[strlen($data) - 1]));
