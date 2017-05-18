@@ -1,9 +1,5 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-### Work in progress !
-
-@Todo - add data encryption
-
 ### About
 This is a custom, database based session handler with encyption/decryption of data.
 
