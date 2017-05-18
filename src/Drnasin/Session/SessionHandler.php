@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-session-save-handler          *
  *                                                                                *
  * File: SessionHandler.php                                                       *
- * Last Modified: 18.5.2017 20:39                                                 *
+ * Last Modified: 18.5.2017 21:13                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -71,21 +71,33 @@ class SessionHandler implements \SessionHandlerInterface
     }
 
     /**
+     * Opens the session.
+     *
+     * @param string $save_path
+     * @param string $session_id
+     *
+     * @return bool
+     */
+    public function open($save_path, $session_id)
+    {
+        return $this->gc();
+    }
+
+    /**
      * Closes the session.
-     * Not needed. We are using database so let's
-     * use this opportunity to call the garbage collector.
+     *
      * @return bool
      */
     public function close()
     {
-        return $this->gc();
+        return true;
     }
 
     /**
      * Garbage Collector.
      * Life time is in the database!
      *
-     * @param int $max (sec.)
+     * @param int $max (sec.) UNUSED
      *
      * @return bool
      */
@@ -96,26 +108,13 @@ class SessionHandler implements \SessionHandlerInterface
     }
 
     /**
-     * Opens the session.
-     *
-     * @param string $save_path
-     * @param string $session_id
-     *
-     * @return bool
-     */
-    public function open($save_path, $session_id)
-    {
-        return true;
-    }
-
-    /**
      * Read the session, decrypt the data and return it.
      *
-     * @param int $id session id
+     * @param int $session_id session id
      *
      * @return string
      */
-    public function read($id)
+    public function read($session_id)
     {
         $sql = $this->pdo->prepare("SELECT session_data, init_vector
                                     FROM {$this->sessionTableName}
@@ -123,7 +122,7 @@ class SessionHandler implements \SessionHandlerInterface
                                     AND (modified + INTERVAL lifetime SECOND > NOW())");
 
         $result = $sql->execute([
-            'session_id' => $id,
+            'session_id' => $session_id,
         ]);
 
         if ($result && $sql->rowCount()) {
@@ -131,55 +130,6 @@ class SessionHandler implements \SessionHandlerInterface
         } else {
             return '';
         }
-    }
-
-    /**
-     * Write the session, encode the data
-     *
-     * @param int    $id session id
-     * @param string $data session data
-     *
-     * @return bool
-     */
-    public function write($id, $data)
-    {
-        do {
-            $iv_size = 16; // 128 bits
-            $iv = openssl_random_pseudo_bytes($iv_size, $strong);
-        }
-        while(false === $strong);
-
-        $sql = $this->pdo->prepare("REPLACE INTO {$this->sessionTableName} (session_id, modified, session_data, lifetime, init_vector) 
-                                    VALUES(:session_id, NOW(), :session_data, :lifetime, :iv)");
-
-        return $sql->execute([
-            'session_id'   => $id,
-            'session_data' => $this->encrypt($data, $iv),
-            'lifetime'     => ini_get('session.gc_maxlifetime'),
-            'iv' => $iv
-        ]);
-    }
-
-    /**
-     * @param string $id
-     *
-     * @return bool
-     */
-    public function destroy($id)
-    {
-        return $this->pdo->prepare("DELETE FROM {$this->sessionTableName} WHERE session_id = :session_id")->execute([
-            'session_id' => $id
-        ]);
-    }
-
-    protected function encrypt($data, $iv)
-    {
-        return openssl_encrypt($this->pkcs7_pad($data, 16), // padded data
-            'AES-256-CBC',        // cipher and mode
-            $this->secretKey,      // secret key
-            0,                    // options (not used)
-            $iv                   // initialisation vector
-        );
     }
 
     /**
@@ -193,6 +143,59 @@ class SessionHandler implements \SessionHandlerInterface
         return $this->pkcs7_unpad(openssl_decrypt($data, 'AES-256-CBC', $this->secretKey, 0, $iv));
     }
 
+    protected function pkcs7_unpad($data)
+    {
+        return substr($data, 0, -ord($data[strlen($data) - 1]));
+    }
+
+    /**
+     * Write the session, encode the data
+     *
+     * @param int    $session_id session id
+     * @param string $data session data
+     *
+     * @return bool
+     */
+    public function write($session_id, $data)
+    {
+        do {
+            $iv_size = 16; // 128 bits
+            $iv = openssl_random_pseudo_bytes($iv_size, $strong);
+        } while (!$strong);
+
+        $sql = $this->pdo->prepare("REPLACE INTO {$this->sessionTableName} (session_id, modified, session_data, lifetime, init_vector) 
+                                    VALUES(:session_id, NOW(), :session_data, :lifetime, :iv)");
+
+        return $sql->execute([
+            'session_id'   => $session_id,
+            'session_data' => $this->encrypt($data, $iv),
+            'lifetime'     => ini_get('session.gc_maxlifetime'),
+            'iv'           => $iv
+        ]);
+    }
+
+    /**
+     * @param string $data
+     * @param string $iv
+     *
+     * @return string
+     */
+    protected function encrypt($data, $iv)
+    {
+        return openssl_encrypt($this->pkcs7_pad($data, 16), // padded data
+            'AES-256-CBC',        // cipher and mode
+            $this->secretKey,      // secret key
+            0,                    // options (not used)
+            $iv                   // initialisation vector
+        );
+    }
+
+    /**
+     * @param string $data
+     * @param int    $size
+     *
+     * @return string
+     */
     protected function pkcs7_pad($data, $size)
     {
         $length = $size - strlen($data) % $size;
@@ -200,8 +203,15 @@ class SessionHandler implements \SessionHandlerInterface
         return $data . str_repeat(chr($length), $length);
     }
 
-    protected function pkcs7_unpad($data)
+    /**
+     * @param string $id
+     *
+     * @return bool
+     */
+    public function destroy($id)
     {
-        return substr($data, 0, -ord($data[strlen($data) - 1]));
+        return $this->pdo->prepare("DELETE FROM {$this->sessionTableName} WHERE session_id = :session_id")->execute([
+            'session_id' => $id
+        ]);
     }
 }
