@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-session-save-handler          *
  *                                                                                *
  * File: SessionHandler.php                                                       *
- * Last Modified: 18.5.2017 8:34                                                  *
+ * Last Modified: 18.5.2017 20:39                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -51,17 +51,23 @@ class SessionHandler implements \SessionHandlerInterface
      * @var string
      */
     protected $sessionTableName;
+    /**
+     * @var string
+     */
+    protected $secretKey;
 
     /**
      * SessionHandler constructor.
      *
      * @param \PDO   $pdo
      * @param string $sessionTableName
+     * @param string $secretKey
      */
-    public function __construct(\PDO $pdo, $sessionTableName)
+    public function __construct(\PDO $pdo, $sessionTableName, $secretKey)
     {
         $this->pdo = $pdo;
         $this->sessionTableName = $sessionTableName;
+        $this->secretKey = $secretKey;
     }
 
     /**
@@ -111,7 +117,7 @@ class SessionHandler implements \SessionHandlerInterface
      */
     public function read($id)
     {
-        $sql = $this->pdo->prepare("SELECT session_data
+        $sql = $this->pdo->prepare("SELECT session_data, init_vector
                                     FROM {$this->sessionTableName}
                                     WHERE session_id = :session_id 
                                     AND (modified + INTERVAL lifetime SECOND > NOW())");
@@ -121,7 +127,7 @@ class SessionHandler implements \SessionHandlerInterface
         ]);
 
         if ($result && $sql->rowCount()) {
-            return base64_decode($sql->fetchObject()->session_data);
+            return $this->decrypt($sql->fetchObject()->session_data, $sql->fetchObject()->init_vector);
         } else {
             return '';
         }
@@ -137,13 +143,20 @@ class SessionHandler implements \SessionHandlerInterface
      */
     public function write($id, $data)
     {
-        $sql = $this->pdo->prepare("REPLACE INTO {$this->sessionTableName} (session_id, modified, session_data, lifetime) 
-                                    VALUES(:session_id, NOW(), :session_data, :lifetime)");
+        do {
+            $iv_size = 16; // 128 bits
+            $iv = openssl_random_pseudo_bytes($iv_size, $strong);
+        }
+        while(false === $strong);
+
+        $sql = $this->pdo->prepare("REPLACE INTO {$this->sessionTableName} (session_id, modified, session_data, lifetime, init_vector) 
+                                    VALUES(:session_id, NOW(), :session_data, :lifetime, :iv)");
 
         return $sql->execute([
             'session_id'   => $id,
-            'session_data' => base64_encode($data),
-            'lifetime'     => ini_get('session.gc_maxlifetime')
+            'session_data' => $this->encrypt($data, $iv),
+            'lifetime'     => ini_get('session.gc_maxlifetime'),
+            'iv' => $iv
         ]);
     }
 
@@ -157,5 +170,38 @@ class SessionHandler implements \SessionHandlerInterface
         return $this->pdo->prepare("DELETE FROM {$this->sessionTableName} WHERE session_id = :session_id")->execute([
             'session_id' => $id
         ]);
+    }
+
+    protected function encrypt($data, $iv)
+    {
+        return openssl_encrypt($this->pkcs7_pad($data, 16), // padded data
+            'AES-256-CBC',        // cipher and mode
+            $this->secretKey,      // secret key
+            0,                    // options (not used)
+            $iv                   // initialisation vector
+        );
+    }
+
+    /**
+     * @param $data
+     * @param $iv
+     *
+     * @return bool|string
+     */
+    protected function decrypt($data, $iv)
+    {
+        return $this->pkcs7_unpad(openssl_decrypt($data, 'AES-256-CBC', $this->secretKey, 0, $iv));
+    }
+
+    protected function pkcs7_pad($data, $size)
+    {
+        $length = $size - strlen($data) % $size;
+
+        return $data . str_repeat(chr($length), $length);
+    }
+
+    protected function pkcs7_unpad($data)
+    {
+        return substr($data, 0, -ord($data[strlen($data) - 1]));
     }
 }
