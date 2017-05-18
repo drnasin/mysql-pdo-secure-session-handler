@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-session-save-handler          *
  *                                                                                *
  * File: SessionHandler.php                                                       *
- * Last Modified: 17.5.2017 21:32                                                 *
+ * Last Modified: 18.5.2017 8:11                                                  *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -85,7 +85,7 @@ class SessionHandler implements \SessionHandlerInterface
      */
     public function gc($max = 0)
     {
-        return $this->pdo->prepare("DELETE FROM {$this->sessionTableName} WHERE (modified + INTERVAL lifetime SECOND) < NOW()")
+        return $this->pdo->prepare('DELETE FROM {$this->sessionTableName} WHERE (modified + INTERVAL lifetime SECOND) < NOW()')
                          ->execute();
     }
 
@@ -111,10 +111,10 @@ class SessionHandler implements \SessionHandlerInterface
      */
     public function read($id)
     {
-        $sql = $this->pdo->prepare("SELECT session_data
+        $sql = $this->pdo->prepare('SELECT session_data
                                     FROM {$this->sessionTableName}
                                     WHERE session_id = :session_id 
-                                    AND (modified + INTERVAL lifetime SECOND > NOW())");
+                                    AND (modified + INTERVAL lifetime SECOND > NOW())');
 
         $result = $sql->execute([
             'session_id' => $id,
@@ -137,8 +137,8 @@ class SessionHandler implements \SessionHandlerInterface
      */
     public function write($id, $data)
     {
-        $sql = $this->pdo->prepare("REPLACE INTO {$this->sessionTableName} (session_id, modified, session_data, lifetime) 
-                                    VALUES(:session_id, NOW(), :session_data, :lifetime)");
+        $sql = $this->pdo->prepare('REPLACE INTO {$this->sessionTableName} (session_id, modified, session_data, lifetime) 
+                                    VALUES(:session_id, NOW(), :session_data, :lifetime)');
 
         return $sql->execute([
             'session_id'   => $id,
@@ -154,7 +154,7 @@ class SessionHandler implements \SessionHandlerInterface
      */
     public function destroy($id)
     {
-        return $this->pdo->prepare("DELETE FROM {$this->sessionTableName} WHERE session_id = :session_id")->execute([
+        return $this->pdo->prepare('DELETE FROM {$this->sessionTableName} WHERE session_id = :session_id')->execute([
             'session_id' => $id
         ]);
     }
