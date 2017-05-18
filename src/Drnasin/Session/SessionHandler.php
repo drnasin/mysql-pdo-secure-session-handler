@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-session-save-handler          *
  *                                                                                *
  * File: SessionHandler.php                                                       *
- * Last Modified: 18.5.2017 8:12                                                  *
+ * Last Modified: 18.5.2017 8:34                                                  *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -128,7 +128,7 @@ class SessionHandler implements \SessionHandlerInterface
     }
 
     /**
-     * Write the session, encrypt the data
+     * Write the session, encode the data
      *
      * @param int    $id session id
      * @param string $data session data
