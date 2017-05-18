@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-session-save-handler          *
  *                                                                                *
  * File: SessionHandlerTest.php                                                   *
- * Last Modified: 17.5.2017 21:32                                                 *
+ * Last Modified: 18.5.2017 8:27                                                  *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -42,4 +42,31 @@ use PHPUnit\Framework\TestCase;
  */
 class SessionHandlerTest extends TestCase
 {
+    protected $pdo;
+
+    public function setUp()
+    {
+        $dbSettings = [
+            'host'     => '127.0.0.1',
+            'port'     => '3306',
+            'name'     => 'sessions',
+            'username' => 'root',
+            'password' => '',
+            'charset'  => 'utf8',
+        ];
+
+        $dsn = sprintf('mysql:host=%s;dbname=%s;port=%d;charset=%s', $dbSettings['host'], $dbSettings['name'],
+            $dbSettings['port'], $dbSettings['charset']);
+
+        $this->pdo = new \PDO($dsn, $dbSettings['username'], $dbSettings['password']);
+    }
+
+    public function testConstructor() {
+        $handler = new SessionHandler($this->pdo, 'sessions');
+        $this->assertTrue($handler instanceof SessionHandler);
+    }
+
+    /**
+     * @todo more tests coming
+     */
 }
