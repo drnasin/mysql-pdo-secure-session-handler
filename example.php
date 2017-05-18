@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-session-save-handler          *
  *                                                                                *
  * File: example.php                                                              *
- * Last Modified: 17.5.2017 21:32                                                 *
+ * Last Modified: 18.5.2017 20:41                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -48,7 +48,9 @@ $dsn = sprintf('mysql:host=%s;dbname=%s;port=%d;charset=%s', $dbSettings['host']
 
 $pdo = new PDO($dsn, $dbSettings['username'], $dbSettings['password']);
 
-$handler = new \Drnasin\Session\SessionHandler($pdo, $sessionTableName);
+$secretKey = hash('sha512', 'gandalf');
+
+$handler = new \Drnasin\Session\SessionHandler($pdo, $sessionTableName, $secretKey);
 session_set_save_handler($handler, true);
 session_start();
 
