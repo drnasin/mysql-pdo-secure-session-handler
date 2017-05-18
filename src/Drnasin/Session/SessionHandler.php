@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-session-save-handler          *
  *                                                                                *
  * File: SessionHandler.php                                                       *
- * Last Modified: 18.5.2017 21:15                                                 *
+ * Last Modified: 18.5.2017 21:19                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -84,72 +84,12 @@ class SessionHandler implements \SessionHandlerInterface
     }
 
     /**
-     * Garbage Collector.
-     * Life time is in the database!
-     *
-     * @param int $max (sec.) UNUSED
-     *
-     * @return bool
-     */
-    public function gc($max = 0)
-    {
-        return $this->pdo->prepare("DELETE FROM {$this->sessionTableName} WHERE (modified + INTERVAL lifetime SECOND) < NOW()")
-                         ->execute();
-    }
-
-    /**
      * Closes the session.
      * @return bool
      */
     public function close()
     {
         return true;
-    }
-
-    /**
-     * Read the session, decrypt the data and return it.
-     *
-     * @param int $session_id session id
-     *
-     * @return string
-     */
-    public function read($session_id)
-    {
-        $sql = $this->pdo->prepare("SELECT session_data, init_vector
-                                    FROM {$this->sessionTableName}
-                                    WHERE session_id = :session_id 
-                                    AND (modified + INTERVAL lifetime SECOND > NOW())");
-
-        $result = $sql->execute([
-            'session_id' => $session_id,
-        ]);
-
-        if ($result && $sql->rowCount()) {
-            return $this->decrypt($sql->fetchObject()->session_data, $sql->fetchObject()->init_vector);
-        } else {
-            return '';
-        }
-    }
-
-    /**
-     * @param $data
-     * @param $iv
-     *
-     * @return bool|string
-     */
-    protected function decrypt($data, $iv)
-    {
-        return $this->pkcs7_unpad(openssl_decrypt($data, 'AES-256-CBC', $this->secretKey, 0, $iv));
-    }
-
-    /**
-     * @param $data
-     *
-     * @return bool|string
-     */
-    protected function pkcs7_unpad($data)
-    {
-        return substr($data, 0, -ord($data[strlen($data) - 1]));
     }
 
     /**
@@ -179,6 +119,57 @@ class SessionHandler implements \SessionHandlerInterface
     }
 
     /**
+     * Read the session, decrypt the data and return it.
+     *
+     * @param int $session_id session id
+     *
+     * @return string
+     */
+    public function read($session_id)
+    {
+        $sql = $this->pdo->prepare("SELECT session_data, init_vector
+                                    FROM {$this->sessionTableName}
+                                    WHERE session_id = :session_id 
+                                    AND (modified + INTERVAL lifetime SECOND > NOW())");
+
+        $result = $sql->execute([
+            'session_id' => $session_id,
+        ]);
+
+        if ($result && $sql->rowCount()) {
+            return $this->decrypt($sql->fetchObject()->session_data, $sql->fetchObject()->init_vector);
+        } else {
+            return '';
+        }
+    }
+
+    /**
+     * @param string $id
+     *
+     * @return bool
+     */
+    public function destroy($id)
+    {
+        return $this->pdo->prepare("DELETE FROM {$this->sessionTableName} WHERE session_id = :session_id")->execute([
+            'session_id' => $id
+        ]);
+    }
+
+    /**
+     * Garbage Collector.
+     * Life time is in the database!
+     *
+     * @param int $max (sec.) UNUSED
+     *
+     * @return bool
+     */
+    public function gc($max = 0)
+    {
+        return $this->pdo->prepare("DELETE FROM {$this->sessionTableName} WHERE (modified + INTERVAL lifetime SECOND) < NOW()")
+                         ->execute();
+    }
+
+    /**
      * @param string $data
      * @param string $iv
      *
@@ -195,6 +186,17 @@ class SessionHandler implements \SessionHandlerInterface
     }
 
     /**
+     * @param $data
+     * @param $iv
+     *
+     * @return bool|string
+     */
+    protected function decrypt($data, $iv)
+    {
+        return $this->pkcs7_unpad(openssl_decrypt($data, 'AES-256-CBC', $this->secretKey, 0, $iv));
+    }
+
+    /**
      * @param string $data
      * @param int    $size
      *
@@ -208,14 +210,12 @@ class SessionHandler implements \SessionHandlerInterface
     }
 
     /**
-     * @param string $id
+     * @param $data
      *
-     * @return bool
+     * @return bool|string
      */
-    public function destroy($id)
+    protected function pkcs7_unpad($data)
     {
-        return $this->pdo->prepare("DELETE FROM {$this->sessionTableName} WHERE session_id = :session_id")->execute([
-            'session_id' => $id
-        ]);
+        return substr($data, 0, -ord($data[strlen($data) - 1]));
     }
 }
