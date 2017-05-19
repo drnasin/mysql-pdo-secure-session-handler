@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-session-save-handler          *
  *                                                                                *
  * File: SessionHandlerTest.php                                                   *
- * Last Modified: 19.5.2017 19:51                                                 *
+ * Last Modified: 19.5.2017 20:21                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -43,20 +43,71 @@ use PHPUnit\Framework\TestCase;
  */
 class SessionHandlerTest extends TestCase
 {
+    /**
+     * @var \PDO
+     */
     protected $pdo;
+    /**
+     * @var SessionHandler
+     */
+    protected $handler;
 
     public function setUp()
     {
         $dsn = sprintf($GLOBALS['DB_DSN'], $GLOBALS['DB_HOST'], $GLOBALS['DB_NAME'], $GLOBALS['DB_PORT'],
             $GLOBALS['DB_CHARSET']);
         $this->pdo = new \PDO($dsn, $GLOBALS['DB_USER'], $GLOBALS['DB_PASS']);
+        $this->handler = new SessionHandler($this->pdo, "sessions", hash('sha512', 'tests'));
     }
 
+    /**
+     * Constructor test.
+     */
     public function testConstructor()
     {
-        $handler = new SessionHandler($this->pdo, "sessions", hash('sha512', 'tests'));
-        Assert::assertAttributeEquals($this->pdo, 'pdo', $handler);
-        Assert::assertAttributeEquals('sessions', 'sessionTableName', $handler);
-        Assert::assertAttributeEquals(hash('sha512', 'tests'), 'secretKey', $handler);
+        Assert::assertAttributeEquals($this->pdo, 'pdo', $this->handler);
+        Assert::assertAttributeEquals('sessions', 'sessionTableName', $this->handler);
+        Assert::assertAttributeEquals(hash('sha512', 'tests'), 'secretKey', $this->handler);
+    }
+
+    /**
+     * @param string $sessionId
+     * @param string $sessionData
+     *
+     * @dataProvider sessionProvider
+     */
+    public function testWrite($sessionId, $sessionData)
+    {
+        $this->assertTrue($this->handler->write($sessionId, $sessionData));
+    }
+
+    /**
+     * @param string $sessionId
+     * @param string $sessionData
+     *
+     * @depends testWrite
+     * @dataProvider sessionProvider
+     */
+    public function testRead($sessionId, $sessionData)
+    {
+        $this->assertEquals($sessionData, $this->handler->read($sessionId));
+    }
+
+    /**
+     * Data provider
+     *
+     * @return array
+     */
+    public function sessionProvider()
+    {
+        $sessionId = md5('test');
+        $sessionData = 'Lorem ipsum dolor sit amet!';
+
+        return [
+            [
+                $sessionId,
+                $sessionData
+            ]
+        ];
     }
 }
