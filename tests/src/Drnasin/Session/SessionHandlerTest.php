@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-session-save-handler          *
  *                                                                                *
  * File: SessionHandlerTest.php                                                   *
- * Last Modified: 19.5.2017 8:07                                                  *
+ * Last Modified: 19.5.2017 19:51                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -32,6 +32,7 @@
 
 namespace Drnasin\Session;
 
+use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -46,26 +47,16 @@ class SessionHandlerTest extends TestCase
 
     public function setUp()
     {
-        $dbSettings = [
-            'host'     => '127.0.0.1',
-            'port'     => '3306',
-            'name'     => 'sessions',
-            'username' => 'root',
-            'password' => '',
-            'charset'  => 'utf8',
-        ];
-
-        $dsn = sprintf('mysql:host=%s;dbname=%s;port=%d;charset=%s', $dbSettings['host'], $dbSettings['name'],
-            $dbSettings['port'], $dbSettings['charset']);
-
-        $this->pdo = new \PDO($dsn, $dbSettings['username'], $dbSettings['password']);
+        $dsn = sprintf($GLOBALS['DB_DSN'], $GLOBALS['DB_HOST'], $GLOBALS['DB_NAME'], $GLOBALS['DB_PORT'],
+            $GLOBALS['DB_CHARSET']);
+        $this->pdo = new \PDO($dsn, $GLOBALS['DB_USER'], $GLOBALS['DB_PASS']);
     }
 
-    public function testConstructor() {
-        /**
-         * @todo more tests coming
-         */
+    public function testConstructor()
+    {
+        $handler = new SessionHandler($this->pdo, "sessions", hash('sha512', 'tests'));
+        Assert::assertAttributeEquals($this->pdo, 'pdo', $handler);
+        Assert::assertAttributeEquals('sessions', 'sessionTableName', $handler);
+        Assert::assertAttributeEquals(hash('sha512', 'tests'), 'secretKey', $handler);
     }
-
-
 }
