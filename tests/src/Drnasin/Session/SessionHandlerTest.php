@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandlerTest.php                                                   *
- * Last Modified: 19.5.2017 21:59                                                 *
+ * Last Modified: 19.5.2017 22:01                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -57,6 +57,9 @@ class SessionHandlerTest extends TestCase
     protected $secretKey;
 
     /**
+     * Hate using globals but this is a phpunit mechanism of exposing
+     * php variables from phpunit.xml so it is what it is.
+     *
      * Function is called before running any tests.
      */
     public function setUp()
