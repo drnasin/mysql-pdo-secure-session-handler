@@ -3,7 +3,7 @@
   "version": "1.5.0",
   "license": "MIT",
   "type": "library",
-  "description": "Mysql secure session handler with AES encryption of session data.",
+  "description": "Mysql secure session handler with AES encryption of session data and 'per session' based lifetime.",
   "keywords": [
     "php",
     "mysql",
