@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-session-save-handler          *
  *                                                                                *
  * File: SessionHandler.php                                                       *
- * Last Modified: 19.5.2017 19:36                                                 *
+ * Last Modified: 19.5.2017 20:11                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -155,7 +155,8 @@ class SessionHandler implements \SessionHandlerInterface
         ]);
 
         if ($result && $sql->rowCount()) {
-            return $this->decrypt($sql->fetchObject()->session_data, $sql->fetchObject()->init_vector);
+            $session = $sql->fetchObject();
+            return $this->decrypt($session->session_data, $session->init_vector);
         } else {
             return '';
         }
