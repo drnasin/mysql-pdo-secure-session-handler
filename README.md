@@ -9,4 +9,8 @@ If you need any help let me know. Just use the "Issues" tab...
 
 `composer require drnasin/mysql-pdo-session-save-handler`
 
+### Tests
+`composer tests`
+
+
 
