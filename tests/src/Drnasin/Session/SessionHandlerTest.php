@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandlerTest.php                                                   *
- * Last Modified: 19.5.2017 21:48                                                 *
+ * Last Modified: 19.5.2017 21:52                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -118,7 +118,7 @@ class SessionHandlerTest extends TestCase
      */
     public function sessionProvider()
     {
-        $sessionId = md5('test');
+        $sessionId = md5(__NAMESPACE__);
         $sessionData = 'Lorem ipsum dolor sit amet!';
 
         return [

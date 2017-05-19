@@ -7,7 +7,7 @@
   ~ Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler       ~
   ~                                                                               ~
   ~ File: phpunit.xml                                                             ~
-  ~ Last Modified: 19.5.2017 20:29                                                ~
+  ~ Last Modified: 19.5.2017 21:58                                                ~
   ~                                                                               ~
   ~ The MIT License                                                               ~
   ~                                                                               ~
@@ -36,13 +36,13 @@
         </testsuite>
     </testsuites>
     <php>
-        <var name="DB_DSN" value="mysql:host=%s;dbname=%s;port=%d;charset=%s" />
-        <var name="DB_HOST" value="localhost" />
-        <var name="DB_PORT" value="3306" />
-        <var name="DB_USER" value="root" />
-        <var name="DB_PASS" value="" />
-        <var name="DB_NAME" value="sessions" />
-        <var name="DB_TABLENAME" value="sessions" />
-        <var name="DB_CHARSET" value="utf8" />
+        <var name="DB_DSN" value="mysql:host=%s;dbname=%s;port=%d;charset=%s"/>
+        <var name="DB_HOST" value="localhost"/>
+        <var name="DB_PORT" value="3306"/>
+        <var name="DB_USER" value="root"/>
+        <var name="DB_PASS" value=""/>
+        <var name="DB_NAME" value="sessions"/>
+        <var name="DB_TABLENAME" value="sessions"/>
+        <var name="DB_CHARSET" value="utf8"/>
     </php>
 </phpunit>
