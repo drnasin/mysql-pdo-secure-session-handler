@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandlerTest.php                                                   *
- * Last Modified: 19.5.2017 21:20                                                 *
+ * Last Modified: 19.5.2017 21:48                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -32,7 +32,6 @@
 
 namespace Drnasin\Session;
 
-use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -52,10 +51,14 @@ class SessionHandlerTest extends TestCase
      */
     protected $handler;
     /**
+     * This is our 'general encryption key'
      * @var string
      */
     protected $secretKey;
 
+    /**
+     * Function is called before running any tests.
+     */
     public function setUp()
     {
         $dsn = sprintf($GLOBALS['DB_DSN'], $GLOBALS['DB_HOST'], $GLOBALS['DB_NAME'], $GLOBALS['DB_PORT'],
@@ -70,9 +73,9 @@ class SessionHandlerTest extends TestCase
      */
     public function testConstructor()
     {
-        Assert::assertAttributeEquals($this->pdo, 'pdo', $this->handler);
-        Assert::assertAttributeEquals('sessions', 'sessionTableName', $this->handler);
-        Assert::assertAttributeEquals($this->secretKey, 'secretKey', $this->handler);
+        $this->assertAttributeEquals($this->pdo, 'pdo', $this->handler);
+        $this->assertAttributeEquals('sessions', 'sessionTableName', $this->handler);
+        $this->assertAttributeEquals($this->secretKey, 'secretKey', $this->handler);
     }
 
     /**
@@ -119,10 +122,7 @@ class SessionHandlerTest extends TestCase
         $sessionData = 'Lorem ipsum dolor sit amet!';
 
         return [
-            [
-                $sessionId,
-                $sessionData
-            ]
+            [$sessionId, $sessionData]
         ];
     }
 }
