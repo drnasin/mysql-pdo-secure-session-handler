@@ -4,10 +4,10 @@
  * Copyright (c) 2017. All rights reserved.                                       *
  *                                                                                *
  * Project Name: Session Save Handler                                             *
- * Repository: https://github.com/drnasin/mysql-pdo-session-save-handler          *
+ * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandler.php                                                       *
- * Last Modified: 19.5.2017 20:11                                                 *
+ * Last Modified: 19.5.2017 20:29                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
