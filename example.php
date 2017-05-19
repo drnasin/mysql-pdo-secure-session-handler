@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-session-save-handler          *
  *                                                                                *
  * File: example.php                                                              *
- * Last Modified: 18.5.2017 20:41                                                 *
+ * Last Modified: 19.5.2017 8:25                                                  *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -54,7 +54,8 @@ $handler = new \Drnasin\Session\SessionHandler($pdo, $sessionTableName, $secretK
 session_set_save_handler($handler, true);
 session_start();
 
-$_SESSION['test'] = "working!";
+$_SESSION['test'] = $dbSettings;
+$_SESSION['test']['test'] = $dbSettings;
 
-print($_SESSION['test']);
+var_dump($_SESSION['test']['test']);
 

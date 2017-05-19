@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-session-save-handler          *
  *                                                                                *
  * File: SessionHandler.php                                                       *
- * Last Modified: 18.5.2017 21:19                                                 *
+ * Last Modified: 19.5.2017 8:28                                                  *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -103,8 +103,8 @@ class SessionHandler implements \SessionHandlerInterface
     public function write($session_id, $data)
     {
         do {
-            $iv_size = 16; // 128 bits
-            $iv = openssl_random_pseudo_bytes($iv_size, $strong);
+            $ivSize = 16; // 128 bits
+            $iv = openssl_random_pseudo_bytes($ivSize, $strong);
         } while (!$strong);
 
         $sql = $this->pdo->prepare("REPLACE INTO {$this->sessionTableName} (session_id, modified, session_data, lifetime, init_vector) 
