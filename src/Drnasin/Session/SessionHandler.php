@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-session-save-handler          *
  *                                                                                *
  * File: SessionHandler.php                                                       *
- * Last Modified: 19.5.2017 19:32                                                 *
+ * Last Modified: 19.5.2017 19:36                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -35,7 +35,7 @@ namespace Drnasin\Session;
 /**
  * Class Session Save Handler.
  * Mysql (PDO) session save handler with session data encryption.
- * This class encrypts the session data using secretKey (encrption key)
+ * This class encrypts the session data using secretKey ("encryption key")
  * and initialisation vector (IV) which is generated per session.
  * @package Drnasin\Session
  * @author Ante Drnasin
@@ -137,17 +137,6 @@ class SessionHandler implements \SessionHandlerInterface
     }
 
     /**
-     * @param string $data
-     * @param string $iv
-     *
-     * @return string
-     */
-    protected function encrypt($data, $iv)
-    {
-        return openssl_encrypt($data, 'AES-256-CTR', $this->secretKey, 0, $iv);
-    }
-
-    /**
      * Read the session, decrypt the data and return it.
      *
      * @param int $session_id session id
@@ -173,6 +162,18 @@ class SessionHandler implements \SessionHandlerInterface
     }
 
     /**
+     * @param string $id
+     *
+     * @return bool
+     */
+    public function destroy($id)
+    {
+        return $this->pdo->prepare("DELETE FROM {$this->sessionTableName} WHERE session_id = :session_id")->execute([
+            'session_id' => $id
+        ]);
+    }
+
+    /**
      * @param $data
      * @param $iv
      *
@@ -184,14 +185,13 @@ class SessionHandler implements \SessionHandlerInterface
     }
 
     /**
-     * @param string $id
+     * @param string $data
+     * @param string $iv
      *
-     * @return bool
+     * @return string
      */
-    public function destroy($id)
+    protected function encrypt($data, $iv)
     {
-        return $this->pdo->prepare("DELETE FROM {$this->sessionTableName} WHERE session_id = :session_id")->execute([
-            'session_id' => $id
-        ]);
+        return openssl_encrypt($data, 'AES-256-CTR', $this->secretKey, 0, $iv);
     }
 }
