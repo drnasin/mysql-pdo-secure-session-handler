@@ -7,7 +7,7 @@
   ~ Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler       ~
   ~                                                                               ~
   ~ File: phpunit.xml                                                             ~
-  ~ Last Modified: 19.5.2017 22:43                                                ~
+  ~ Last Modified: 19.5.2017 22:46                                                ~
   ~                                                                               ~
   ~ The MIT License                                                               ~
   ~                                                                               ~
@@ -35,7 +35,6 @@
             <directory>./</directory>
         </testsuite>
     </testsuites>
-    <!-- Prevent coverage reports from looking in tests, vendors, config folders -->
     <logging>
         <log type="coverage-html" target="build/coverage" title="PHPUnit"
              charset="UTF-8" yui="true" highlight="true"
@@ -43,9 +42,8 @@
         <log type="coverage-clover" target="build/logs/clover.xml"/>
         <log type="junit" target="build/logs/junit.xml" logIncompleteSkipped="false"/>
     </logging>
-
     <filter>
-        <whitelist processUncoveredFilesFromWhitelist="true">
+        <whitelist>
             <directory suffix=".php">../src/</directory>
         </whitelist>
     </filter>
