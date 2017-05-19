@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandlerTest.php                                                   *
- * Last Modified: 19.5.2017 22:01                                                 *
+ * Last Modified: 19.5.2017 22:54                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -59,7 +59,6 @@ class SessionHandlerTest extends TestCase
     /**
      * Hate using globals but this is a phpunit mechanism of exposing
      * php variables from phpunit.xml so it is what it is.
-     *
      * Function is called before running any tests.
      */
     public function setUp()
@@ -113,6 +112,40 @@ class SessionHandlerTest extends TestCase
     public function testDestroy($sessionId)
     {
         $this->assertTrue($this->handler->destroy($sessionId));
+    }
+
+    /**
+     * Test garbage collectiong.
+     * @todo refine test
+     */
+    public function testGC()
+    {
+        $this->assertTrue($this->handler->gc());
+    }
+
+    /**
+     * Test session "opening" (calling of gc in our case)
+     * @todo refine test
+     */
+    public function testOpen()
+    {
+        $this->assertTrue($this->handler->open(null, null));
+    }
+
+    /**
+     * for the sake of 100% code coverage :)
+     */
+    public function testClose()
+    {
+        $this->assertTrue($this->handler->close());
+    }
+
+    /**
+     * negative test
+     */
+    public function testNonexistingSessionId()
+    {
+        $this->assertEmpty($this->handler->read(md5('non existing')));
     }
 
     /**
