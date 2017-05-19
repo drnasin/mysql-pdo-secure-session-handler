@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-session-save-handler          *
  *                                                                                *
  * File: SessionHandler.php                                                       *
- * Last Modified: 19.5.2017 8:28                                                  *
+ * Last Modified: 19.5.2017 19:32                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -34,8 +34,9 @@ namespace Drnasin\Session;
 
 /**
  * Class Session Save Handler.
- * Custom database session save handler with encrypted session data using PDO.
- * Lifetime of a session can be "per session" base!
+ * Mysql (PDO) session save handler with session data encryption.
+ * This class encrypts the session data using secretKey (encrption key)
+ * and initialisation vector (IV) which is generated per session.
  * @package Drnasin\Session
  * @author Ante Drnasin
  */
@@ -52,6 +53,9 @@ class SessionHandler implements \SessionHandlerInterface
      */
     protected $sessionTableName;
     /**
+     * Encryption key (private key).
+     * Used in combination with initialisation vector (IV) which is generated for every session.
+     * Value of this secret key can be anything you want as long as you keep it SAFE and PRIVATE!
      * @var string
      */
     protected $secretKey;
@@ -81,6 +85,20 @@ class SessionHandler implements \SessionHandlerInterface
     public function open($save_path, $session_id)
     {
         return $this->gc();
+    }
+
+    /**
+     * Garbage Collector.
+     * Life time is in the database!
+     *
+     * @param int $max (sec.) UNUSED
+     *
+     * @return bool
+     */
+    public function gc($max = 0)
+    {
+        return $this->pdo->prepare("DELETE FROM {$this->sessionTableName} WHERE (modified + INTERVAL lifetime SECOND) < NOW()")
+                         ->execute();
     }
 
     /**
@@ -119,6 +137,17 @@ class SessionHandler implements \SessionHandlerInterface
     }
 
     /**
+     * @param string $data
+     * @param string $iv
+     *
+     * @return string
+     */
+    protected function encrypt($data, $iv)
+    {
+        return openssl_encrypt($data, 'AES-256-CTR', $this->secretKey, 0, $iv);
+    }
+
+    /**
      * Read the session, decrypt the data and return it.
      *
      * @param int $session_id session id
@@ -144,6 +173,17 @@ class SessionHandler implements \SessionHandlerInterface
     }
 
     /**
+     * @param $data
+     * @param $iv
+     *
+     * @return bool|string
+     */
+    protected function decrypt($data, $iv)
+    {
+        return openssl_decrypt($data, 'AES-256-CTR', $this->secretKey, 0, $iv);
+    }
+
+    /**
      * @param string $id
      *
      * @return bool
@@ -153,69 +193,5 @@ class SessionHandler implements \SessionHandlerInterface
         return $this->pdo->prepare("DELETE FROM {$this->sessionTableName} WHERE session_id = :session_id")->execute([
             'session_id' => $id
         ]);
-    }
-
-    /**
-     * Garbage Collector.
-     * Life time is in the database!
-     *
-     * @param int $max (sec.) UNUSED
-     *
-     * @return bool
-     */
-    public function gc($max = 0)
-    {
-        return $this->pdo->prepare("DELETE FROM {$this->sessionTableName} WHERE (modified + INTERVAL lifetime SECOND) < NOW()")
-                         ->execute();
-    }
-
-    /**
-     * @param string $data
-     * @param string $iv
-     *
-     * @return string
-     */
-    protected function encrypt($data, $iv)
-    {
-        return openssl_encrypt($this->pkcs7_pad($data, 16), // padded data
-            'AES-256-CBC',        // cipher and mode
-            $this->secretKey,      // secret key
-            0,                    // options (not used)
-            $iv                   // initialisation vector
-        );
-    }
-
-    /**
-     * @param $data
-     * @param $iv
-     *
-     * @return bool|string
-     */
-    protected function decrypt($data, $iv)
-    {
-        return $this->pkcs7_unpad(openssl_decrypt($data, 'AES-256-CBC', $this->secretKey, 0, $iv));
-    }
-
-    /**
-     * @param string $data
-     * @param int    $size
-     *
-     * @return string
-     */
-    protected function pkcs7_pad($data, $size)
-    {
-        $length = $size - strlen($data) % $size;
-
-        return $data . str_repeat(chr($length), $length);
-    }
-
-    /**
-     * @param $data
-     *
-     * @return bool|string
-     */
-    protected function pkcs7_unpad($data)
-    {
-        return substr($data, 0, -ord($data[strlen($data) - 1]));
     }
 }
