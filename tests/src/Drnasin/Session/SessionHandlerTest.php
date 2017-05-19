@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-session-save-handler          *
  *                                                                                *
  * File: SessionHandlerTest.php                                                   *
- * Last Modified: 18.5.2017 8:28                                                  *
+ * Last Modified: 19.5.2017 8:07                                                  *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -62,9 +62,10 @@ class SessionHandlerTest extends TestCase
     }
 
     public function testConstructor() {
+        /**
+         * @todo more tests coming
+         */
     }
 
-    /**
-     * @todo more tests coming
-     */
+
 }
