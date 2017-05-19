@@ -1,5 +1,5 @@
 {
-  "name": "drnasin/mysql-pdo-session-save-handler",
+  "name": "drnasin/mysql-pdo-secure-session-handler",
   "version": "1.5.0",
   "license": "MIT",
   "type": "library",
@@ -14,7 +14,7 @@
     "encrypted",
     "session data"
   ],
-  "homepage": "https://github.com/drnasin/mysql-pdo-session-save-handler",
+  "homepage": "https://github.com/drnasin/mysql-pdo-secure-session-handler",
   "authors": [
     {
       "name": "Ante Drnasin",
