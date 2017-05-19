@@ -7,7 +7,7 @@
   ~ Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler       ~
   ~                                                                               ~
   ~ File: phpunit.xml                                                             ~
-  ~ Last Modified: 19.5.2017 22:32                                                ~
+  ~ Last Modified: 19.5.2017 22:35                                                ~
   ~                                                                               ~
   ~ The MIT License                                                               ~
   ~                                                                               ~
@@ -51,5 +51,4 @@
         <var name="DB_TABLENAME" value="sessions"/>
         <var name="DB_CHARSET" value="utf8"/>
     </php>
-
 </phpunit>
