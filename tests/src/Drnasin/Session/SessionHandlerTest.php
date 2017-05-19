@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-session-save-handler          *
  *                                                                                *
  * File: SessionHandlerTest.php                                                   *
- * Last Modified: 19.5.2017 20:21                                                 *
+ * Last Modified: 19.5.2017 20:23                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -51,13 +51,18 @@ class SessionHandlerTest extends TestCase
      * @var SessionHandler
      */
     protected $handler;
+    /**
+     * @var string
+     */
+    protected $secretKey;
 
     public function setUp()
     {
         $dsn = sprintf($GLOBALS['DB_DSN'], $GLOBALS['DB_HOST'], $GLOBALS['DB_NAME'], $GLOBALS['DB_PORT'],
             $GLOBALS['DB_CHARSET']);
         $this->pdo = new \PDO($dsn, $GLOBALS['DB_USER'], $GLOBALS['DB_PASS']);
-        $this->handler = new SessionHandler($this->pdo, "sessions", hash('sha512', 'tests'));
+        $this->secretKey = hash('sha512', 'tests');
+        $this->handler = new SessionHandler($this->pdo, $GLOBALS['DB_TABLENAME'], $this->secretKey);
     }
 
     /**
@@ -67,7 +72,7 @@ class SessionHandlerTest extends TestCase
     {
         Assert::assertAttributeEquals($this->pdo, 'pdo', $this->handler);
         Assert::assertAttributeEquals('sessions', 'sessionTableName', $this->handler);
-        Assert::assertAttributeEquals(hash('sha512', 'tests'), 'secretKey', $this->handler);
+        Assert::assertAttributeEquals($this->secretKey, 'secretKey', $this->handler);
     }
 
     /**
