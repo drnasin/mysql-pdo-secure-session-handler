@@ -7,7 +7,7 @@
   ~ Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler       ~
   ~                                                                               ~
   ~ File: phpunit.xml                                                             ~
-  ~ Last Modified: 19.5.2017 21:58                                                ~
+  ~ Last Modified: 19.5.2017 22:32                                                ~
   ~                                                                               ~
   ~ The MIT License                                                               ~
   ~                                                                               ~
@@ -31,10 +31,16 @@
   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
 <phpunit colors="true" strict="true" bootstrap="../vendor/autoload.php" beStrictAboutTestsThatDoNotTestAnything="true">
     <testsuites>
-        <testsuite name="Session Handler tests">
+        <testsuite name="Secure Session Handler tests">
             <directory>./</directory>
         </testsuite>
     </testsuites>
+    <!-- Prevent coverage reports from looking in tests, vendors, config folders -->
+    <filter>
+        <whitelist>
+            <directory suffix=".php">./src/</directory>
+        </whitelist>
+    </filter>
     <php>
         <var name="DB_DSN" value="mysql:host=%s;dbname=%s;port=%d;charset=%s"/>
         <var name="DB_HOST" value="localhost"/>
@@ -45,4 +51,5 @@
         <var name="DB_TABLENAME" value="sessions"/>
         <var name="DB_CHARSET" value="utf8"/>
     </php>
+
 </phpunit>
