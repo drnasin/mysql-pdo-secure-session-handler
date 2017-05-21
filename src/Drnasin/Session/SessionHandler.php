@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandler.php                                                       *
- * Last Modified: 21.5.2017 15:45                                                 *
+ * Last Modified: 21.5.2017 18:44                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -99,7 +99,7 @@ class SessionHandler implements \SessionHandlerInterface
     {
         /**
          * Generate the session initialisation vector (iv) first,
-         * which is then used together with your secretKey to enrypt/decrypt the session data.
+         * which is then used together with $this->secretKey to enrypt/decrypt the session data.
          */
         do {
             $ivSize = 16; // 128 bits
@@ -157,11 +157,13 @@ class SessionHandler implements \SessionHandlerInterface
     }
 
     /**
-     * Garbage Collector.
-     * Lifetime is in the database!
+     * Garbage Collector
+     * Lifetime is in the database therefore $lifetime
+     * is unused and we can unset it.
      *
-     * @param int $lifetime (sec.) Unused!
+     * @param int $lifetime (sec.)
      *
+     * @see
      * @return bool
      */
     public function gc($lifetime = 1440)
@@ -174,6 +176,7 @@ class SessionHandler implements \SessionHandlerInterface
     /**
      * Not important for DB handler.
      *
+     * @codeCoverageIgnore
      * @param string $save_path
      * @param string $session_id
      *
@@ -187,6 +190,7 @@ class SessionHandler implements \SessionHandlerInterface
     /**
      * Not important for DB handler.
      *
+     * @codeCoverageIgnore
      * @return bool
      */
     public function close()
