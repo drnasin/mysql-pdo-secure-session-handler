@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandler.php                                                       *
- * Last Modified: 21.5.2017 19:02                                                 *
+ * Last Modified: 21.5.2017 19:03                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -57,10 +57,10 @@ class SessionHandler implements \SessionHandlerInterface
      * Used in combination with session's initialisation vector (IV) to encrypt/decrypt the session data.
      * Value of this key can be anything you want (string, hash or even openssl_random_pseudo_bytes())
      * as long as you keep it SAFE and PRIVATE! If you lose it you are screwed. That's why you have options
-     * regarding "complexity" (yau can't really "remember" value from openssl_random_pseudo_bytes() now can you? :) )
+     * regarding "complexity" (you can't really "remember" value from openssl_random_pseudo_bytes() now can you? :) )
      *
      * I suggest using sha512 hash of a secret word as a secretKey. Should be more than enough for majority of people
-     * in dev/land.
+     * in dev/land. Reminder: hash('sha512', '<secret-word>');
      *
      * @var string
      */
