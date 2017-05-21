@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandler.php                                                       *
- * Last Modified: 21.5.2017 19:03                                                 *
+ * Last Modified: 21.5.2017 20:26                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -58,10 +58,8 @@ class SessionHandler implements \SessionHandlerInterface
      * Value of this key can be anything you want (string, hash or even openssl_random_pseudo_bytes())
      * as long as you keep it SAFE and PRIVATE! If you lose it you are screwed. That's why you have options
      * regarding "complexity" (you can't really "remember" value from openssl_random_pseudo_bytes() now can you? :) )
-     *
      * I suggest using sha512 hash of a secret word as a secretKey. Should be more than enough for majority of people
      * in dev/land. Reminder: hash('sha512', '<secret-word>');
-     *
      * @var string
      */
     protected $secretKey;
@@ -80,29 +78,35 @@ class SessionHandler implements \SessionHandlerInterface
      * @param string $sessionsTableName
      * @param string $secretKey
      * @param string $cipher
+     * @throws \RuntimeException
      */
     public function __construct(\PDO $pdo, $sessionsTableName, $secretKey, $cipher = 'AES-256-CTR')
     {
         $this->pdo = $pdo;
         $this->sessionsTableName = $sessionsTableName;
         $this->secretKey = $secretKey;
+
+        if(!in_array($cipher, openssl_get_cipher_methods())) {
+            throw new \RuntimeException(sprintf("unkown cipher method '%s' received in %s", $cipher, __METHOD__));
+        }
         $this->cipher = $cipher;
     }
 
     /**
-     * Workflow: Generate initalisation vector, encrypt the data, write encrypted session data to DB.
-     * Default session lifetime value is taken from php.ini -> session.gc_maxlifetime.
+     * Workflow: Generate initalisation vector for the current session, encrypt the data using IV and $this->secretkey,
+     * write the session to database. Default session lifetime (usually defaults to 1440) is taken from
+     * php.ini -> session.gc_maxlifetime.
      *
      * @param int    $session_id session id
-     * @param string $data session data
+     * @param string $data raw session data
      *
      * @return bool
      */
     public function write($session_id, $data)
     {
         /**
-         * Generate the session initialisation vector (iv) first,
-         * which is then used together with $this->secretKey to enrypt/decrypt the session data.
+         * First generate the session initialisation vector (iv) and then
+         * use it together with $this->secretKey to enrypt/decrypt the session data.
          */
         do {
             $ivSize = 16; // 128 bits
@@ -110,7 +114,7 @@ class SessionHandler implements \SessionHandlerInterface
         } while (!$strong);
 
         $sql = $this->pdo->prepare("REPLACE INTO {$this->sessionsTableName} (session_id, modified, session_data, lifetime, init_vector) 
-                                    VALUES(:session_id, NOW(), :session_data, :lifetime, :iv)");
+                                    VALUES (:session_id, NOW(), :session_data, :lifetime, :iv)");
 
         return $sql->execute([
             'session_id'   => $session_id,
@@ -121,8 +125,8 @@ class SessionHandler implements \SessionHandlerInterface
     }
 
     /**
-     * Read the session, decrypt the data using session IV
-     * and secretKey (general encryption key) and return it.
+     * Read the session, decrypt the data using session IV (initialisation vector)
+     * and secretKey (general encryption key) and return.
      *
      * @param int $session_id session id
      *
@@ -133,7 +137,7 @@ class SessionHandler implements \SessionHandlerInterface
         $sql = $this->pdo->prepare("SELECT session_data, init_vector
                                     FROM {$this->sessionsTableName}
                                     WHERE session_id = :session_id 
-                                    AND (modified + INTERVAL lifetime SECOND > NOW())");
+                                    AND (modified + INTERVAL lifetime SECOND) > NOW()");
 
         $result = $sql->execute([
             'session_id' => $session_id,
@@ -163,17 +167,14 @@ class SessionHandler implements \SessionHandlerInterface
     /**
      * Garbage Collector
      * Lifetime is in the database therefore $lifetime
-     * is unused and we can unset it.
+     * is not used.
      *
      * @param int $lifetime (sec.)
      *
-     * @see
      * @return bool
      */
-    public function gc($lifetime = 1440)
+    public function gc($lifetime = null)
     {
-        unset($lifetime);
-
         return $this->pdo->prepare("DELETE FROM {$this->sessionsTableName} WHERE (modified + INTERVAL lifetime SECOND) < NOW()")
                          ->execute();
     }
