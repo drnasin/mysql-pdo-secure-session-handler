@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandlerTest.php                                                   *
- * Last Modified: 19.5.2017 22:54                                                 *
+ * Last Modified: 21.5.2017 14:36                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -124,26 +124,9 @@ class SessionHandlerTest extends TestCase
     }
 
     /**
-     * Test session "opening" (calling of gc in our case)
-     * @todo refine test
-     */
-    public function testOpen()
-    {
-        $this->assertTrue($this->handler->open(null, null));
-    }
-
-    /**
-     * for the sake of 100% code coverage :)
-     */
-    public function testClose()
-    {
-        $this->assertTrue($this->handler->close());
-    }
-
-    /**
      * negative test
      */
-    public function testNonexistingSessionId()
+    public function testNonExistingSessionId()
     {
         $this->assertEmpty($this->handler->read(md5('non existing')));
     }

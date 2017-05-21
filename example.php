@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: example.php                                                              *
- * Last Modified: 19.5.2017 21:58                                                 *
+ * Last Modified: 20.5.2017 14:15                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -57,3 +57,5 @@ session_start();
 $_SESSION['test'] = $dbSettings;
 var_dump($_SESSION['test']);
 
+$_SESSION['test'] = 'aa';
+var_dump($_SESSION['test']);

@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandler.php                                                       *
- * Last Modified: 19.5.2017 23:01                                                 *
+ * Last Modified: 21.5.2017 14:35                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -75,7 +75,7 @@ class SessionHandler implements \SessionHandlerInterface
     }
 
     /**
-     * Opens the session.
+     * Not important for DB handler
      *
      * @param string $save_path
      * @param string $session_id
@@ -84,18 +84,18 @@ class SessionHandler implements \SessionHandlerInterface
      */
     public function open($save_path, $session_id)
     {
-        return $this->gc();
+        return true;
     }
 
     /**
      * Garbage Collector.
      * Life time is in the database!
      *
-     * @param int $max (sec.) UNUSED
+     * @param int $max (sec.)
      *
      * @return bool
      */
-    public function gc($max = 0)
+    public function gc($max = 1440)
     {
         return $this->pdo->prepare("DELETE FROM {$this->sessionTableName} WHERE (modified + INTERVAL lifetime SECOND) < NOW()")
                          ->execute();
