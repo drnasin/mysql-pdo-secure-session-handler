@@ -1,6 +1,4 @@
-<?xml version="1.0" encoding="utf-8"
-        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-        xsi:noNamespaceSchemaLocation="http://schema.phpunit.de/6.1/phpunit.xsd" ?>
+<?xml version="1.0" encoding="utf-8" ?>
 <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   ~ Created by Ante Drnasin - http://www.drnasin.com                              ~
   ~ Copyright (c) 2017. All rights reserved.                                      ~
@@ -9,7 +7,7 @@
   ~ Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler       ~
   ~                                                                               ~
   ~ File: phpunit.xml                                                             ~
-  ~ Last Modified: 21.5.2017 15:34                                                ~
+  ~ Last Modified: 21.5.2017 15:46                                                ~
   ~                                                                               ~
   ~ The MIT License                                                               ~
   ~                                                                               ~
