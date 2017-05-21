@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandlerTest.php                                                   *
- * Last Modified: 21.5.2017 14:36                                                 *
+ * Last Modified: 21.5.2017 15:33                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -125,6 +125,7 @@ class SessionHandlerTest extends TestCase
 
     /**
      * negative test
+     * @group negative
      */
     public function testNonExistingSessionId()
     {
