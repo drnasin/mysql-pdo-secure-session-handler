@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandler.php                                                       *
- * Last Modified: 21.5.2017 15:22                                                 *
+ * Last Modified: 21.5.2017 15:45                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -111,7 +111,7 @@ class SessionHandler implements \SessionHandlerInterface
 
         return $sql->execute([
             'session_id'   => $session_id,
-            'session_data' => $this->encrypt($data, $iv),
+            'session_data' => openssl_encrypt($data, $this->cipher, $this->secretKey, 0, $iv),
             'lifetime'     => ini_get('session.gc_maxlifetime'),
             'iv'           => $iv
         ]);
@@ -138,7 +138,7 @@ class SessionHandler implements \SessionHandlerInterface
 
         if ($result && $sql->rowCount()) {
             $session = $sql->fetchObject();
-            return $this->decrypt($session->session_data, $session->init_vector);
+            return openssl_decrypt($session->session_data, $this->cipher, $this->secretKey, 0, $session->init_vector);
         } else {
             return '';
         }
@@ -192,27 +192,5 @@ class SessionHandler implements \SessionHandlerInterface
     public function close()
     {
         return true;
-    }
-
-    /**
-     * @param string $data
-     * @param string $iv
-     *
-     * @return string
-     */
-    protected function encrypt($data, $iv)
-    {
-        return openssl_encrypt($data, $this->cipher, $this->secretKey, 0, $iv);
-    }
-
-    /**
-     * @param $data
-     * @param $iv
-     *
-     * @return bool|string
-     */
-    protected function decrypt($data, $iv)
-    {
-        return openssl_decrypt($data, $this->cipher, $this->secretKey, 0, $iv);
     }
 }
