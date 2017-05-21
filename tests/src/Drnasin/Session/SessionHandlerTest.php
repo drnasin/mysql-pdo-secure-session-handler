@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandlerTest.php                                                   *
- * Last Modified: 21.5.2017 15:33                                                 *
+ * Last Modified: 21.5.2017 18:44                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -66,7 +66,7 @@ class SessionHandlerTest extends TestCase
         $dsn = sprintf($GLOBALS['DB_DSN'], $GLOBALS['DB_HOST'], $GLOBALS['DB_NAME'], $GLOBALS['DB_PORT'],
             $GLOBALS['DB_CHARSET']);
         $this->pdo = new \PDO($dsn, $GLOBALS['DB_USER'], $GLOBALS['DB_PASS']);
-        $this->secretKey = hash('sha512', 'tests');
+        $this->secretKey = hash('sha512', 'phpUnit tests', true);
         $this->handler = new SessionHandler($this->pdo, $GLOBALS['DB_TABLENAME'], $this->secretKey);
     }
 
@@ -86,7 +86,7 @@ class SessionHandlerTest extends TestCase
      *
      * @dataProvider sessionProvider
      */
-    public function testWrite($sessionId, $sessionData)
+    public function testSessionWrite($sessionId, $sessionData)
     {
         $this->assertTrue($this->handler->write($sessionId, $sessionData));
     }
@@ -95,10 +95,10 @@ class SessionHandlerTest extends TestCase
      * @param string $sessionId
      * @param string $sessionData
      *
-     * @depends      testWrite
+     * @depends      testSessionWrite
      * @dataProvider sessionProvider
      */
-    public function testRead($sessionId, $sessionData)
+    public function testSessionRead($sessionId, $sessionData)
     {
         $this->assertEquals($sessionData, $this->handler->read($sessionId));
     }
@@ -106,30 +106,30 @@ class SessionHandlerTest extends TestCase
     /**
      * @param string $sessionId
      *
-     * @depends      testRead
+     * @depends      testSessionRead
      * @dataProvider sessionProvider
      */
-    public function testDestroy($sessionId)
+    public function testSessionDestroy($sessionId)
     {
         $this->assertTrue($this->handler->destroy($sessionId));
     }
 
     /**
-     * Test garbage collectiong.
-     * @todo refine test
+     * Test garbage collecting.
      */
-    public function testGC()
+    public function testSessionGarbageCollector()
     {
         $this->assertTrue($this->handler->gc());
     }
 
     /**
      * negative test
-     * @group negative
+     * @group negative-tests
      */
     public function testNonExistingSessionId()
     {
-        $this->assertEmpty($this->handler->read(md5('non existing')));
+        $nonExistingSessionId = md5(time());
+        $this->assertEmpty($this->handler->read($nonExistingSessionId));
     }
 
     /**
