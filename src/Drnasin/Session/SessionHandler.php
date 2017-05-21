@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandler.php                                                       *
- * Last Modified: 21.5.2017 18:44                                                 *
+ * Last Modified: 21.5.2017 18:50                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -51,11 +51,13 @@ class SessionHandler implements \SessionHandlerInterface
      * Name of the DB table which handles the sessions
      * @var string
      */
-    protected $sessionTableName;
+    protected $sessionsTableName;
     /**
      * Encryption key (private key).
-     * Used in combination with initialisation vector (IV)
-     * Value of this secret key can be anything you want as long as you keep it SAFE and PRIVATE!
+     * Used in combination with session's initialisation vector (IV) to encrypt/decrpt the session data.
+     * Value of this secret key can be anything you want 8string, hash, pseudobyte...)
+     * as long as you keep it SAFE and PRIVATE!
+     *
      * @var string
      */
     protected $secretKey;
@@ -71,14 +73,14 @@ class SessionHandler implements \SessionHandlerInterface
      * SessionHandler constructor.
      *
      * @param \PDO   $pdo
-     * @param string $sessionTableName
+     * @param string $sessionsTableName
      * @param string $secretKey
      * @param string $cipher
      */
-    public function __construct(\PDO $pdo, $sessionTableName, $secretKey, $cipher = 'AES-256-CTR')
+    public function __construct(\PDO $pdo, $sessionsTableName, $secretKey, $cipher = 'AES-256-CTR')
     {
         $this->pdo = $pdo;
-        $this->sessionTableName = $sessionTableName;
+        $this->sessionsTableName = $sessionsTableName;
         $this->secretKey = $secretKey;
         $this->cipher = $cipher;
     }
@@ -106,7 +108,7 @@ class SessionHandler implements \SessionHandlerInterface
             $iv = openssl_random_pseudo_bytes($ivSize, $strong);
         } while (!$strong);
 
-        $sql = $this->pdo->prepare("REPLACE INTO {$this->sessionTableName} (session_id, modified, session_data, lifetime, init_vector) 
+        $sql = $this->pdo->prepare("REPLACE INTO {$this->sessionsTableName} (session_id, modified, session_data, lifetime, init_vector) 
                                     VALUES(:session_id, NOW(), :session_data, :lifetime, :iv)");
 
         return $sql->execute([
@@ -128,7 +130,7 @@ class SessionHandler implements \SessionHandlerInterface
     public function read($session_id)
     {
         $sql = $this->pdo->prepare("SELECT session_data, init_vector
-                                    FROM {$this->sessionTableName}
+                                    FROM {$this->sessionsTableName}
                                     WHERE session_id = :session_id 
                                     AND (modified + INTERVAL lifetime SECOND > NOW())");
 
@@ -151,7 +153,7 @@ class SessionHandler implements \SessionHandlerInterface
      */
     public function destroy($session_id)
     {
-        return $this->pdo->prepare("DELETE FROM {$this->sessionTableName} WHERE session_id = :session_id")->execute([
+        return $this->pdo->prepare("DELETE FROM {$this->sessionsTableName} WHERE session_id = :session_id")->execute([
             'session_id' => $session_id
         ]);
     }
@@ -169,7 +171,7 @@ class SessionHandler implements \SessionHandlerInterface
     public function gc($lifetime = 1440)
     {
         unset($lifetime);
-        return $this->pdo->prepare("DELETE FROM {$this->sessionTableName} WHERE (modified + INTERVAL lifetime SECOND) < NOW()")
+        return $this->pdo->prepare("DELETE FROM {$this->sessionsTableName} WHERE (modified + INTERVAL lifetime SECOND) < NOW()")
                          ->execute();
     }
 
