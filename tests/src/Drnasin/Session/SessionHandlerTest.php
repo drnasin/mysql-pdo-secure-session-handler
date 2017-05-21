@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandlerTest.php                                                   *
- * Last Modified: 21.5.2017 21:05                                                 *
+ * Last Modified: 21.5.2017 21:10                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -82,7 +82,7 @@ class SessionHandlerTest extends TestCase
 
     /**
      * @group negative-tests
-     * @expectedException \RuntimeException
+     * @expectedException \Exception
      */
     public function testConstructorUsingUnknownCipher()
     {

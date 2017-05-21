@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandler.php                                                       *
- * Last Modified: 21.5.2017 21:04                                                 *
+ * Last Modified: 21.5.2017 21:13                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -64,7 +64,7 @@ class SessionHandler implements \SessionHandlerInterface
      */
     protected $secretKey;
     /**
-     * Encryption/decryption cipher.
+     * Encryption/decryption cipher method.
      * Default is 'AES-256-CTR'.
      * @see openssl_get_cipher_methods()
      * @var string
@@ -75,8 +75,8 @@ class SessionHandler implements \SessionHandlerInterface
      * SessionHandler constructor.
      *
      * @param \PDO   $pdo
-     * @param        $sessionsTableName
-     * @param        $secretKey
+     * @param string $sessionsTableName
+     * @param string $secretKey
      * @param string $cipher
      *
      * @throws \Exception
@@ -86,14 +86,13 @@ class SessionHandler implements \SessionHandlerInterface
         $this->pdo = $pdo;
         $this->sessionsTableName = $sessionsTableName;
 
-        if(empty($secretKey)) {
-            throw new \Exception(sprintf("secret key is empty in %s",  __METHOD__));
+        if (empty($secretKey)) {
+            throw new \Exception(sprintf('secret key is empty in %s', __METHOD__));
         }
-
         $this->secretKey = $secretKey;
 
-        if(!in_array($cipher, openssl_get_cipher_methods())) {
-            throw new \RuntimeException(sprintf("unkown cipher method '%s' received in %s", $cipher, __METHOD__));
+        if (!in_array($cipher, openssl_get_cipher_methods())) {
+            throw new \Exception(sprintf("unkown cipher method '%s' received in %s", $cipher, __METHOD__));
         }
         $this->cipher = $cipher;
     }
@@ -202,7 +201,6 @@ class SessionHandler implements \SessionHandlerInterface
     /**
      * Not important for database save handler.
      * @codeCoverageIgnore
-     *
      * @return bool
      */
     public function close()
