@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandler.php                                                       *
- * Last Modified: 21.5.2017 20:30                                                 *
+ * Last Modified: 21.5.2017 21:04                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -75,15 +75,21 @@ class SessionHandler implements \SessionHandlerInterface
      * SessionHandler constructor.
      *
      * @param \PDO   $pdo
-     * @param string $sessionsTableName
-     * @param string $secretKey
+     * @param        $sessionsTableName
+     * @param        $secretKey
      * @param string $cipher
-     * @throws \RuntimeException
+     *
+     * @throws \Exception
      */
     public function __construct(\PDO $pdo, $sessionsTableName, $secretKey, $cipher = 'AES-256-CTR')
     {
         $this->pdo = $pdo;
         $this->sessionsTableName = $sessionsTableName;
+
+        if(empty($secretKey)) {
+            throw new \Exception(sprintf("secret key is empty in %s",  __METHOD__));
+        }
+
         $this->secretKey = $secretKey;
 
         if(!in_array($cipher, openssl_get_cipher_methods())) {

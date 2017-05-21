@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandlerTest.php                                                   *
- * Last Modified: 21.5.2017 20:19                                                 *
+ * Last Modified: 21.5.2017 21:05                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -81,6 +81,37 @@ class SessionHandlerTest extends TestCase
     }
 
     /**
+     * @group negative-tests
+     * @expectedException \RuntimeException
+     */
+    public function testConstructorUsingUnknownCipher()
+    {
+        new SessionHandler($this->pdo, $GLOBALS['DB_TABLENAME'], $this->secretKey, 'NonExistingCipher');
+    }
+
+    /**
+     * @param string $sessionId
+     * @param string $sessionData
+     *
+     * @group negative-tests
+     * @dataProvider sessionProvider
+     */
+    public function testUnknownTableName($sessionId, $sessionData)
+    {
+        $handler = new SessionHandler($this->pdo, 'non-existing-table', $this->secretKey);
+        $this->assertFalse($handler->write($sessionId, $sessionData));
+    }
+
+    /**
+     * @group negative-tests
+     * @expectedException \Exception
+     */
+    public function testConstructorUsingEmptySecretKey()
+    {
+        new SessionHandler($this->pdo, $GLOBALS['DB_TABLENAME'], '');
+    }
+
+    /**
      * @param string $sessionId
      * @param string $sessionData
      *
@@ -123,7 +154,6 @@ class SessionHandlerTest extends TestCase
     }
 
     /**
-     * negative test
      * @group negative-tests
      */
     public function testNonExistingSessionId()
@@ -131,6 +161,8 @@ class SessionHandlerTest extends TestCase
         $nonExistingSessionId = md5(time());
         $this->assertEmpty($this->handler->read($nonExistingSessionId));
     }
+
+
 
     /**
      * Data provider
