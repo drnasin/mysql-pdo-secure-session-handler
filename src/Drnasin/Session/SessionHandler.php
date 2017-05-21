@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandler.php                                                       *
- * Last Modified: 21.5.2017 18:54                                                 *
+ * Last Modified: 21.5.2017 19:02                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -53,10 +53,15 @@ class SessionHandler implements \SessionHandlerInterface
      */
     protected $sessionsTableName;
     /**
-     * Encryption key (private key).
-     * Used in combination with session's initialisation vector (IV) to encrypt/decrpt the session data.
-     * Value of this secret key can be anything you want 8string, hash, pseudobyte...)
-     * as long as you keep it SAFE and PRIVATE!
+     * 'Encryption key' (or 'Secret key').
+     * Used in combination with session's initialisation vector (IV) to encrypt/decrypt the session data.
+     * Value of this key can be anything you want (string, hash or even openssl_random_pseudo_bytes())
+     * as long as you keep it SAFE and PRIVATE! If you lose it you are screwed. That's why you have options
+     * regarding "complexity" (yau can't really "remember" value from openssl_random_pseudo_bytes() now can you? :) )
+     *
+     * I suggest using sha512 hash of a secret word as a secretKey. Should be more than enough for majority of people
+     * in dev/land.
+     *
      * @var string
      */
     protected $secretKey;
@@ -85,10 +90,8 @@ class SessionHandler implements \SessionHandlerInterface
     }
 
     /**
-     * Generate initailisation vector, encrypt the data
-     * write encrypted session data to DB. Default session lifetime
-     * value is taken from
-     * session.gc_maxlifetime
+     * Workflow: Generate initalisation vector, encrypt the data, write encrypted session data to DB.
+     * Default session lifetime value is taken from php.ini -> session.gc_maxlifetime.
      *
      * @param int    $session_id session id
      * @param string $data session data
