@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandler.php                                                       *
- * Last Modified: 21.5.2017 14:35                                                 *
+ * Last Modified: 21.5.2017 14:41                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -59,23 +59,28 @@ class SessionHandler implements \SessionHandlerInterface
      * @var string
      */
     protected $secretKey;
-
+    /**
+     * @var string
+     */
+    protected $cipher;
     /**
      * SessionHandler constructor.
      *
      * @param \PDO   $pdo
      * @param string $sessionTableName
      * @param string $secretKey
+     * @param string $cipher
      */
-    public function __construct(\PDO $pdo, $sessionTableName, $secretKey)
+    public function __construct(\PDO $pdo, $sessionTableName, $secretKey, $cipher = 'AES-256-CTR')
     {
         $this->pdo = $pdo;
         $this->sessionTableName = $sessionTableName;
         $this->secretKey = $secretKey;
+        $this->cipher = $cipher;
     }
 
     /**
-     * Not important for DB handler
+     * Not important for DB handler.
      *
      * @param string $save_path
      * @param string $session_id
@@ -88,21 +93,8 @@ class SessionHandler implements \SessionHandlerInterface
     }
 
     /**
-     * Garbage Collector.
-     * Life time is in the database!
+     * Not important for DB handler.
      *
-     * @param int $max (sec.)
-     *
-     * @return bool
-     */
-    public function gc($max = 1440)
-    {
-        return $this->pdo->prepare("DELETE FROM {$this->sessionTableName} WHERE (modified + INTERVAL lifetime SECOND) < NOW()")
-                         ->execute();
-    }
-
-    /**
-     * Closes the session.
      * @return bool
      */
     public function close()
@@ -135,6 +127,20 @@ class SessionHandler implements \SessionHandlerInterface
             'lifetime'     => ini_get('session.gc_maxlifetime'),
             'iv'           => $iv
         ]);
+    }
+
+    /**
+     * Garbage Collector.
+     * Life time is in the database!
+     *
+     * @param int $max (sec.)
+     *
+     * @return bool
+     */
+    public function gc($max = 1440)
+    {
+        return $this->pdo->prepare("DELETE FROM {$this->sessionTableName} WHERE (modified + INTERVAL lifetime SECOND) < NOW()")
+                         ->execute();
     }
 
     /**
@@ -184,7 +190,7 @@ class SessionHandler implements \SessionHandlerInterface
      */
     protected function decrypt($data, $iv)
     {
-        return openssl_decrypt($data, 'AES-256-CTR', $this->secretKey, 0, $iv);
+        return openssl_decrypt($data, $this->cipher, $this->secretKey, 0, $iv);
     }
 
     /**
@@ -195,6 +201,6 @@ class SessionHandler implements \SessionHandlerInterface
      */
     protected function encrypt($data, $iv)
     {
-        return openssl_encrypt($data, 'AES-256-CTR', $this->secretKey, 0, $iv);
+        return openssl_encrypt($data, $this->cipher, $this->secretKey, 0, $iv);
     }
 }
