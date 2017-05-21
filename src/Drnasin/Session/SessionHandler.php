@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandler.php                                                       *
- * Last Modified: 21.5.2017 14:41                                                 *
+ * Last Modified: 21.5.2017 14:48                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -60,6 +60,9 @@ class SessionHandler implements \SessionHandlerInterface
      */
     protected $secretKey;
     /**
+     * Encryption/decryption cipher.
+     * Default is 'AES-256-CTR'.
+     *
      * @var string
      */
     protected $cipher;
