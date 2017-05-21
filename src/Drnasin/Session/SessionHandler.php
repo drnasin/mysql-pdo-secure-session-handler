@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandler.php                                                       *
- * Last Modified: 21.5.2017 14:48                                                 *
+ * Last Modified: 21.5.2017 15:22                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -54,7 +54,7 @@ class SessionHandler implements \SessionHandlerInterface
     protected $sessionTableName;
     /**
      * Encryption key (private key).
-     * Used in combination with initialisation vector (IV) which is generated for every session.
+     * Used in combination with initialisation vector (IV)
      * Value of this secret key can be anything you want as long as you keep it SAFE and PRIVATE!
      * @var string
      */
@@ -66,6 +66,7 @@ class SessionHandler implements \SessionHandlerInterface
      * @var string
      */
     protected $cipher;
+
     /**
      * SessionHandler constructor.
      *
@@ -83,31 +84,11 @@ class SessionHandler implements \SessionHandlerInterface
     }
 
     /**
-     * Not important for DB handler.
-     *
-     * @param string $save_path
-     * @param string $session_id
-     *
-     * @return bool
-     */
-    public function open($save_path, $session_id)
-    {
-        return true;
-    }
-
-    /**
-     * Not important for DB handler.
-     *
-     * @return bool
-     */
-    public function close()
-    {
-        return true;
-    }
-
-    /**
      * Generate initailisation vector, encrypt the data
-     * write encrypted session data to DB.
+     * write encrypted session data to DB. Default session lifetime
+     * value is taken from
+     *
+     * session.gc_maxlifetime
      *
      * @param int    $session_id session id
      * @param string $data session data
@@ -116,6 +97,10 @@ class SessionHandler implements \SessionHandlerInterface
      */
     public function write($session_id, $data)
     {
+        /**
+         * Generate the session initialisation vector (iv) first,
+         * which is then used together with your secretKey to enrypt/decrypt the session data.
+         */
         do {
             $ivSize = 16; // 128 bits
             $iv = openssl_random_pseudo_bytes($ivSize, $strong);
@@ -130,20 +115,6 @@ class SessionHandler implements \SessionHandlerInterface
             'lifetime'     => ini_get('session.gc_maxlifetime'),
             'iv'           => $iv
         ]);
-    }
-
-    /**
-     * Garbage Collector.
-     * Life time is in the database!
-     *
-     * @param int $max (sec.)
-     *
-     * @return bool
-     */
-    public function gc($max = 1440)
-    {
-        return $this->pdo->prepare("DELETE FROM {$this->sessionTableName} WHERE (modified + INTERVAL lifetime SECOND) < NOW()")
-                         ->execute();
     }
 
     /**
@@ -174,26 +145,53 @@ class SessionHandler implements \SessionHandlerInterface
     }
 
     /**
-     * @param string $id
+     * @param string $session_id
      *
      * @return bool
      */
-    public function destroy($id)
+    public function destroy($session_id)
     {
         return $this->pdo->prepare("DELETE FROM {$this->sessionTableName} WHERE session_id = :session_id")->execute([
-            'session_id' => $id
+            'session_id' => $session_id
         ]);
     }
 
     /**
-     * @param $data
-     * @param $iv
+     * Garbage Collector.
+     * Lifetime is in the database!
      *
-     * @return bool|string
+     * @param int $lifetime (sec.) Unused!
+     *
+     * @return bool
      */
-    protected function decrypt($data, $iv)
+    public function gc($lifetime = 1440)
     {
-        return openssl_decrypt($data, $this->cipher, $this->secretKey, 0, $iv);
+        unset($lifetime);
+        return $this->pdo->prepare("DELETE FROM {$this->sessionTableName} WHERE (modified + INTERVAL lifetime SECOND) < NOW()")
+                         ->execute();
+    }
+
+    /**
+     * Not important for DB handler.
+     *
+     * @param string $save_path
+     * @param string $session_id
+     *
+     * @return bool
+     */
+    public function open($save_path, $session_id)
+    {
+        return true;
+    }
+
+    /**
+     * Not important for DB handler.
+     *
+     * @return bool
+     */
+    public function close()
+    {
+        return true;
     }
 
     /**
@@ -205,5 +203,16 @@ class SessionHandler implements \SessionHandlerInterface
     protected function encrypt($data, $iv)
     {
         return openssl_encrypt($data, $this->cipher, $this->secretKey, 0, $iv);
+    }
+
+    /**
+     * @param $data
+     * @param $iv
+     *
+     * @return bool|string
+     */
+    protected function decrypt($data, $iv)
+    {
+        return openssl_decrypt($data, $this->cipher, $this->secretKey, 0, $iv);
     }
 }
