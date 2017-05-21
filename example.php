@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: example.php                                                              *
- * Last Modified: 20.5.2017 14:15                                                 *
+ * Last Modified: 21.5.2017 15:25                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -48,7 +48,12 @@ $dsn = sprintf('mysql:host=%s;dbname=%s;port=%d;charset=%s', $dbSettings['host']
 
 $pdo = new PDO($dsn, $dbSettings['username'], $dbSettings['password']);
 
-$secretKey = hash('sha512', 'gandalf');
+do {
+    $ivSize = 16; // 128 bits
+    $iv = openssl_random_pseudo_bytes($ivSize, $strong);
+} while (!$strong);
+
+$secretKey = hash('sha512', 'secret-key');
 
 $handler = new \Drnasin\Session\SessionHandler($pdo, $sessionTableName, $secretKey);
 session_set_save_handler($handler, true);
