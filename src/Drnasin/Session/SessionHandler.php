@@ -108,7 +108,7 @@ class SessionHandler implements \SessionHandlerInterface
         $this->hashAlgo = $hashAlgo;
 
         if (!in_array($cipher, openssl_get_cipher_methods())) {
-            throw new \Exception(sprintf("unkown cipher method '%s' received in %s", $cipher, __METHOD__));
+            throw new \Exception(sprintf("unknown cipher method '%s' received in %s", $cipher, __METHOD__));
         }
         $this->cipher = $cipher;
     }
