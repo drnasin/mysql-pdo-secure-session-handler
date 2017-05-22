@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandler.php                                                       *
- * Last Modified: 22.5.2017 17:12                                                 *
+ * Last Modified: 22.5.2017 17:29                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -34,7 +34,7 @@ namespace Drnasin\Session;
 
 /**
  * Class Session Save Handler.
- * Mysql (PDO) session save handler with session data encryption.
+ * Mysql (PDO) session save handler with openssl session data encryption.
  * This class encrypts the session data using the "encryption key"
  * and initialisation vector (IV) which is generated per session.
  * @package Drnasin\Session
@@ -95,7 +95,7 @@ class SessionHandler implements \SessionHandlerInterface
         $cipher = 'AES-256-CTR'
     ) {
         $this->pdo = $pdo;
-        $this->sessionsTableName = (string) $sessionsTableName;
+        $this->sessionsTableName = (string)$sessionsTableName;
 
         if (empty($encryptionKey)) {
             throw new \Exception(sprintf('encryption key is empty in %s', __METHOD__));
@@ -115,8 +115,8 @@ class SessionHandler implements \SessionHandlerInterface
     }
 
     /**
-     * Workflow: Generate initalisation vector for the current session, encrypt the data using encryption key and iv,
-     * write the session to database. Default session lifetime (usually defaults to 1440) is taken from
+     * Workflow: Generate initalisation vector for the current session, encrypt the data using encryption key and
+     * generated iv, write the session to database. Default session lifetime (usually defaults to 1440) is taken from
      * php.ini -> session.gc_maxlifetime.
      *
      * @param int    $session_id session id
@@ -128,44 +128,27 @@ class SessionHandler implements \SessionHandlerInterface
     {
         /**
          * First generate the session initialisation vector (iv) and then
-         * use it together with encryption key to encrypt the session data.
+         * use it together with hashed encryption key to encrypt the session data,
+         * then write everything to database.
          */
         $iv = openssl_random_pseudo_bytes(openssl_cipher_iv_length($this->cipher));
+        $encryptedData = $this->encrypt($data, $iv);
+        $sessionLifetime = ini_get('session.gc_maxlifetime');
 
         $sql = $this->pdo->prepare("REPLACE INTO {$this->sessionsTableName} (session_id, modified, session_data, lifetime, init_vector) 
                                     VALUES (:session_id, NOW(), :session_data, :lifetime, :iv)");
 
         return $sql->execute([
             'session_id'   => $session_id,
-            'session_data' => $this->encrypt($data, $iv),
-            'lifetime'     => ini_get('session.gc_maxlifetime'),
+            'session_data' => $encryptedData,
+            'lifetime'     => $sessionLifetime,
             'iv'           => $iv
         ]);
     }
 
     /**
-     * @param $data
-     * @param $iv
-     *
-     * @return string
-     * @throws \Exception
-     */
-    protected function encrypt($data, $iv)
-    {
-        $hashedEncryptionKey = hash($this->hashAlgo, $this->encryptionKey, true);
-        $encryptedData = openssl_encrypt($data, $this->cipher, $hashedEncryptionKey, OPENSSL_RAW_DATA, $iv);
-
-        if (false === $encryptedData) {
-            throw new \Exception(sprintf('session data encryption failed in %s. encryption error: %s', __METHOD__,
-                openssl_error_string()));
-        }
-
-        return base64_encode($encryptedData);
-    }
-
-    /**
      * Read the session, decrypt the data using session IV (initialisation vector)
-     * and secretKey (general encryption key) and return the data.
+     * and encryption key and return the decryped data.
      *
      * @param int $session_id session id
      *
@@ -192,8 +175,32 @@ class SessionHandler implements \SessionHandlerInterface
     }
 
     /**
+     * Encrypts the data using $iv and hashed $this->encryptionKey.
+     *
      * @param $data
      * @param $iv
+     *
+     * @return string
+     * @throws \Exception
+     */
+    protected function encrypt($data, $iv)
+    {
+        $hashedEncryptionKey = hash($this->hashAlgo, $this->encryptionKey, true);
+        $encryptedData = openssl_encrypt($data, $this->cipher, $hashedEncryptionKey, OPENSSL_RAW_DATA, $iv);
+
+        if (false === $encryptedData) {
+            throw new \Exception(sprintf('session data encryption failed in %s. encryption error: %s', __METHOD__,
+                openssl_error_string()));
+        }
+
+        return base64_encode($encryptedData);
+    }
+
+    /**
+     * Decrypts the data using $iv and hashed $this->encryptionKey.
+     *
+     * @param string $data base64 encoded string
+     * @param string $iv
      *
      * @return string
      * @throws \Exception
@@ -213,6 +220,8 @@ class SessionHandler implements \SessionHandlerInterface
     }
 
     /**
+     * Deletes the session from the database.
+     *
      * @param string $session_id
      *
      * @return bool
@@ -226,8 +235,7 @@ class SessionHandler implements \SessionHandlerInterface
 
     /**
      * Garbage Collector.
-     * Lifetime of a session is stored in the database,
-     * therefore $lifetime is not used.
+     * Lifetime of a session is stored in the database, therefor $lifetime is not used.
      *
      * @param int $lifetime (sec.)
      *
