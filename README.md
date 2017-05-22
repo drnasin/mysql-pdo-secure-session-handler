@@ -5,7 +5,7 @@ This is a mysql secure session handler with openssl encryption/decryption of ses
 
 ### Features
    1. openssl encryption of session data using initialisation vector + 'general encryption key'
-   2. lifetime of a session is 'per session' base
+   2. lifetime of a session is kept in the database
 
 ### Encryption
 Encryption logic is as follows.
