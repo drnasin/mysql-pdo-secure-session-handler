@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandlerTest.php                                                   *
- * Last Modified: 21.5.2017 21:10                                                 *
+ * Last Modified: 22.5.2017 9:36                                                  *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -86,7 +86,7 @@ class SessionHandlerTest extends TestCase
      */
     public function testConstructorUsingUnknownCipher()
     {
-        new SessionHandler($this->pdo, $GLOBALS['DB_TABLENAME'], $this->secretKey, 'NonExistingCipher');
+        (new SessionHandler($this->pdo, $GLOBALS['DB_TABLENAME'], $this->secretKey, 'NonExistingCipher'));
     }
 
     /**
@@ -108,7 +108,7 @@ class SessionHandlerTest extends TestCase
      */
     public function testConstructorUsingEmptySecretKey()
     {
-        new SessionHandler($this->pdo, $GLOBALS['DB_TABLENAME'], '');
+        (new SessionHandler($this->pdo, $GLOBALS['DB_TABLENAME'], ''));
     }
 
     /**
@@ -162,10 +162,8 @@ class SessionHandlerTest extends TestCase
         $this->assertEmpty($this->handler->read($nonExistingSessionId));
     }
 
-
-
     /**
-     * Data provider
+     * Data provider function
      * @return array
      */
     public function sessionProvider()
