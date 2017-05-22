@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: example.php                                                              *
- * Last Modified: 21.5.2017 20:38                                                 *
+ * Last Modified: 22.5.2017 12:41                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -45,7 +45,7 @@ $sessionTableName = 'sessions';
 
 /**
  * Secret key can be anything, a simple string, hash (like in our exmaple)
- * or even another openssl_random_pseudo_bytes() generated value.
+ * or even another openssl_random_pseudo_bytes() generated value (or even RSA key).
  * Whatever it is just make sure you keep it SAFE!
  */
 $secretKey = hash('sha512', '<secret-key>');
