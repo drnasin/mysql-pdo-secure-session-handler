@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandler.php                                                       *
- * Last Modified: 22.5.2017 16:48                                                 *
+ * Last Modified: 22.5.2017 16:49                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -95,7 +95,7 @@ class SessionHandler implements \SessionHandlerInterface
         $cipher = 'AES-256-CTR'
     ) {
         $this->pdo = $pdo;
-        $this->sessionsTableName = $sessionsTableName;
+        $this->sessionsTableName = (string) $sessionsTableName;
 
         if (empty($encryptionKey)) {
             throw new \Exception(sprintf('encryption key is empty in %s', __METHOD__));
