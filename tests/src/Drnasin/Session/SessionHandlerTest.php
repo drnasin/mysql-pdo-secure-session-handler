@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandlerTest.php                                                   *
- * Last Modified: 22.5.2017 9:36                                                  *
+ * Last Modified: 22.5.2017 9:47                                                  *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -38,7 +38,6 @@ use PHPUnit\Framework\TestCase;
  * Class SessionHandlerTest
  * @package Drnasin\Session
  * @author  Ante Drnasin
- * @link    https://www.drnasin.com
  */
 class SessionHandlerTest extends TestCase
 {
@@ -63,10 +62,9 @@ class SessionHandlerTest extends TestCase
      */
     public function setUp()
     {
-        $dsn = sprintf($GLOBALS['DB_DSN'], $GLOBALS['DB_HOST'], $GLOBALS['DB_NAME'], $GLOBALS['DB_PORT'],
-            $GLOBALS['DB_CHARSET']);
+        $dsn = sprintf($GLOBALS['DB_DSN'], $GLOBALS['DB_HOST'], $GLOBALS['DB_NAME'], $GLOBALS['DB_PORT'], $GLOBALS['DB_CHARSET']);
         $this->pdo = new \PDO($dsn, $GLOBALS['DB_USER'], $GLOBALS['DB_PASS']);
-        $this->secretKey = hash('sha512', 'phpUnit tests', true);
+        $this->secretKey = hash('sha512', 'phpUnit tests');
         $this->handler = new SessionHandler($this->pdo, $GLOBALS['DB_TABLENAME'], $this->secretKey);
     }
 
@@ -84,7 +82,7 @@ class SessionHandlerTest extends TestCase
      * @group negative-tests
      * @expectedException \Exception
      */
-    public function testConstructorUsingUnknownCipher()
+    public function testConstructorUsingUnknownCipherMethod()
     {
         (new SessionHandler($this->pdo, $GLOBALS['DB_TABLENAME'], $this->secretKey, 'NonExistingCipher'));
     }
