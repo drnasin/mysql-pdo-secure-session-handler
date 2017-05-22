@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandler.php                                                       *
- * Last Modified: 22.5.2017 12:48                                                 *
+ * Last Modified: 22.5.2017 14:56                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -62,7 +62,7 @@ class SessionHandler implements \SessionHandlerInterface
      * in dev/land. Reminder: hash('sha512', '<secret-word>');
      * @var string
      */
-    protected $secretKey;
+    protected $encryptionKey;
     /**
      * Encryption/decryption cipher method.
      * Default is 'AES-256-CTR'.
@@ -76,20 +76,20 @@ class SessionHandler implements \SessionHandlerInterface
      *
      * @param \PDO   $pdo
      * @param string $sessionsTableName
-     * @param string $secretKey
+     * @param string $encryptionKey
      * @param string $cipher
      *
      * @throws \Exception
      */
-    public function __construct(\PDO $pdo, $sessionsTableName, $secretKey, $cipher = 'AES-256-CTR')
+    public function __construct(\PDO $pdo, $sessionsTableName, $encryptionKey, $cipher = 'AES-256-CTR')
     {
         $this->pdo = $pdo;
         $this->sessionsTableName = $sessionsTableName;
 
-        if (empty($secretKey)) {
-            throw new \Exception(sprintf('secret key is empty in %s', __METHOD__));
+        if (empty($encryptionKey)) {
+            throw new \Exception(sprintf('encryption key is empty in %s', __METHOD__));
         }
-        $this->secretKey = $secretKey;
+        $this->encryptionKey = $encryptionKey;
 
         if (!in_array($cipher, openssl_get_cipher_methods())) {
             throw new \Exception(sprintf("unkown cipher method '%s' received in %s", $cipher, __METHOD__));
@@ -98,7 +98,7 @@ class SessionHandler implements \SessionHandlerInterface
     }
 
     /**
-     * Workflow: Generate initalisation vector for the current session, encrypt the data using IV and $this->secretkey,
+     * Workflow: Generate initalisation vector for the current session, encrypt the data using encryption key and iv,
      * write the session to database. Default session lifetime (usually defaults to 1440) is taken from
      * php.ini -> session.gc_maxlifetime.
      *
@@ -111,19 +111,16 @@ class SessionHandler implements \SessionHandlerInterface
     {
         /**
          * First generate the session initialisation vector (iv) and then
-         * use it together with $this->secretKey to enrypt/decrypt the session data.
+         * use it together with encryption key to enrypt/decrypt the session data.
          */
-        do {
-            $ivSize = openssl_cipher_iv_length($this->cipher); //get iv length for our cipher method
-            $iv = openssl_random_pseudo_bytes($ivSize, $strong); //generate iv until $strong is true
-        } while (!$strong);
+        $iv = openssl_random_pseudo_bytes(openssl_cipher_iv_length($this->cipher));
 
         $sql = $this->pdo->prepare("REPLACE INTO {$this->sessionsTableName} (session_id, modified, session_data, lifetime, init_vector) 
                                     VALUES (:session_id, NOW(), :session_data, :lifetime, :iv)");
 
         return $sql->execute([
             'session_id'   => $session_id,
-            'session_data' => openssl_encrypt($data, $this->cipher, $this->secretKey, 0, $iv),
+            'session_data' => openssl_encrypt($data, $this->cipher, $this->encryptionKey, 0, $iv),
             'lifetime'     => ini_get('session.gc_maxlifetime'),
             'iv'           => $iv
         ]);
@@ -144,14 +141,15 @@ class SessionHandler implements \SessionHandlerInterface
                                     WHERE session_id = :session_id 
                                     AND (modified + INTERVAL lifetime SECOND) > NOW()");
 
-        $result = $sql->execute([
+        $executed = $sql->execute([
             'session_id' => $session_id,
         ]);
 
-        if ($result && $sql->rowCount()) {
+        if ($executed && $sql->rowCount()) {
             $session = $sql->fetchObject();
 
-            return openssl_decrypt($session->session_data, $this->cipher, $this->secretKey, 0, $session->init_vector);
+            return openssl_decrypt($session->session_data, $this->cipher, $this->encryptionKey, 0,
+                $session->init_vector);
         } else {
             return '';
         }
@@ -173,11 +171,11 @@ class SessionHandler implements \SessionHandlerInterface
      * Garbage Collector.
      * Lifetime of a session is stored in the database,
      * therefore $lifetime is not used.
-     * @see \SessionHandlerInterface::gc()
      *
      * @param int $lifetime (sec.)
      *
      * @return bool
+     * @see \SessionHandlerInterface::gc()
      */
     public function gc($lifetime = null)
     {
