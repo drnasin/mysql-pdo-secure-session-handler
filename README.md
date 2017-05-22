@@ -1,12 +1,11 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ### About
-This is a mysql secure session handler with AES encryption of session data.
+This is a mysql secure session handler with openssl encryption/decryption of session data.
 
 ### Features
-   1. strong encryption of session data using 'session encryption key' (initialisation vector) + 'general encryption key'
+   1. openssl encryption of session data using initialisation vector + 'general encryption key'
    2. lifetime of a session is 'per session' base
-        - this offers a great control over session (when debugging)
 
 ### Encryption
 Encryption logic is as follows.
