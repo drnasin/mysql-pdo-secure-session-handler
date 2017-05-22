@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandler.php                                                       *
- * Last Modified: 21.5.2017 21:13                                                 *
+ * Last Modified: 22.5.2017 9:29                                                  *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -131,7 +131,7 @@ class SessionHandler implements \SessionHandlerInterface
 
     /**
      * Read the session, decrypt the data using session IV (initialisation vector)
-     * and secretKey (general encryption key) and return.
+     * and secretKey (general encryption key) and return the data.
      *
      * @param int $session_id session id
      *
