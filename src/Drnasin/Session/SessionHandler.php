@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandler.php                                                       *
- * Last Modified: 22.5.2017 14:56                                                 *
+ * Last Modified: 22.5.2017 16:22                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -35,7 +35,7 @@ namespace Drnasin\Session;
 /**
  * Class Session Save Handler.
  * Mysql (PDO) session save handler with session data encryption.
- * This class encrypts the session data using secretKey ("encryption key")
+ * This class encrypts the session data using the "encryption key"
  * and initialisation vector (IV) which is generated per session.
  * @package Drnasin\Session
  * @author Ante Drnasin
@@ -53,16 +53,22 @@ class SessionHandler implements \SessionHandlerInterface
      */
     protected $sessionsTableName;
     /**
-     * 'Encryption key' (or 'Secret key').
+     * 'Encryption key'.
      * Used in combination with session's initialisation vector (IV) to encrypt/decrypt the session data.
      * Value of this key can be anything you want (string, hash or even openssl_random_pseudo_bytes())
-     * as long as you keep it SAFE and PRIVATE! If you lose it you are screwed. That's why you have options
-     * regarding "complexity" (you can't really "remember" value from openssl_random_pseudo_bytes() now can you? :) )
-     * I suggest using sha512 hash of a secret word as a secretKey. Should be more than enough for majority of people
-     * in dev/land. Reminder: hash('sha512', '<secret-word>');
+     * as long as you keep it SAFE and PRIVATE!
+     *
+     * @important encryption key is hashed using sha512 before enryption/decryption
      * @var string
      */
     protected $encryptionKey;
+    /**
+     * Any value from hash_algos() array.
+     * Default is sha512
+     * @var string
+     * @see hash_algos()
+     */
+    protected $hashAlgo;
     /**
      * Encryption/decryption cipher method.
      * Default is 'AES-256-CTR'.
@@ -77,12 +83,18 @@ class SessionHandler implements \SessionHandlerInterface
      * @param \PDO   $pdo
      * @param string $sessionsTableName
      * @param string $encryptionKey
+     * @param string $hashAlgo
      * @param string $cipher
      *
      * @throws \Exception
      */
-    public function __construct(\PDO $pdo, $sessionsTableName, $encryptionKey, $cipher = 'AES-256-CTR')
-    {
+    public function __construct(
+        \PDO $pdo,
+        $sessionsTableName,
+        $encryptionKey,
+        $hashAlgo = 'sha512',
+        $cipher = 'AES-256-CTR'
+    ) {
         $this->pdo = $pdo;
         $this->sessionsTableName = $sessionsTableName;
 
@@ -90,6 +102,11 @@ class SessionHandler implements \SessionHandlerInterface
             throw new \Exception(sprintf('encryption key is empty in %s', __METHOD__));
         }
         $this->encryptionKey = $encryptionKey;
+
+        if (!in_array($hashAlgo, hash_algos())) {
+            throw new \Exception(sprintf("unkown hash algo '%s' received in %s", $hashAlgo, __METHOD__));
+        }
+        $this->hashAlgo = $hashAlgo;
 
         if (!in_array($cipher, openssl_get_cipher_methods())) {
             throw new \Exception(sprintf("unkown cipher method '%s' received in %s", $cipher, __METHOD__));
@@ -120,10 +137,29 @@ class SessionHandler implements \SessionHandlerInterface
 
         return $sql->execute([
             'session_id'   => $session_id,
-            'session_data' => openssl_encrypt($data, $this->cipher, $this->encryptionKey, 0, $iv),
+            'session_data' => $this->encrypt($data, $iv),
             'lifetime'     => ini_get('session.gc_maxlifetime'),
             'iv'           => $iv
         ]);
+    }
+
+    /**
+     * @param $data
+     * @param $iv
+     *
+     * @return string
+     * @throws \Exception
+     */
+    public function encrypt($data, $iv)
+    {
+        $hashedEncryptionKey = hash($this->hashAlgo, $this->encryptionKey, true);
+        $encryptedData = openssl_encrypt($data, $this->cipher, $hashedEncryptionKey, OPENSSL_RAW_DATA, $iv);
+
+        if (false === $encryptedData) {
+            throw new \Exception(sprintf('session data encryption failed in %s. encryption error: %s', __METHOD__, openssl_error_string()));
+        }
+
+        return base64_encode($encryptedData);
     }
 
     /**
@@ -148,11 +184,30 @@ class SessionHandler implements \SessionHandlerInterface
         if ($executed && $sql->rowCount()) {
             $session = $sql->fetchObject();
 
-            return openssl_decrypt($session->session_data, $this->cipher, $this->encryptionKey, 0,
-                $session->init_vector);
+            return $this->decrypt($session->session_data, $session->init_vector);
         } else {
             return '';
         }
+    }
+
+    /**
+     * @param $data
+     * @param $iv
+     *
+     * @return string
+     * @throws \Exception
+     */
+    public function decrypt($data, $iv)
+    {
+        $data = base64_decode($data);
+        $hashedEncryptionKey = hash($this->hashAlgo, $this->encryptionKey, true);
+        $decryptedData = openssl_decrypt($data, $this->cipher, $hashedEncryptionKey, OPENSSL_RAW_DATA, $iv);
+
+        if (false === $decryptedData) {
+            throw new \Exception(sprintf('session data decryption failed in %s. decryption error: %s', __METHOD__, openssl_error_string()));
+        }
+
+        return $decryptedData;
     }
 
     /**

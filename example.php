@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: example.php                                                              *
- * Last Modified: 22.5.2017 12:41                                                 *
+ * Last Modified: 22.5.2017 16:14                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -44,11 +44,11 @@ $dbSettings = [
 $sessionTableName = 'sessions';
 
 /**
- * Secret key can be anything, a simple string, hash (like in our exmaple)
- * or even another openssl_random_pseudo_bytes() generated value (or even RSA key).
+ * Encryption key can be anything, a simple raw string, hash (although have in mind
+ * SessionHanlder class already hashes the "encryption key" using sha256 before enc/dec ;) )
  * Whatever it is just make sure you keep it SAFE!
  */
-$secretKey = hash('sha512', '<secret-key>');
+$encryptionKey = hash('sha512', '<your-encryption-key>');
 
 $dsn = sprintf('mysql:host=%s;dbname=%s;port=%d;charset=%s', $dbSettings['host'], $dbSettings['name'],
     $dbSettings['port'], $dbSettings['charset']);
@@ -56,7 +56,7 @@ $dsn = sprintf('mysql:host=%s;dbname=%s;port=%d;charset=%s', $dbSettings['host']
 $handler = new \Drnasin\Session\SessionHandler(
     new PDO($dsn, $dbSettings['username'], $dbSettings['password']),
     $sessionTableName,
-    $secretKey
+    $encryptionKey
 );
 session_set_save_handler($handler, true);
 session_start();
