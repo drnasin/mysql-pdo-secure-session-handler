@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandler.php                                                       *
- * Last Modified: 22.5.2017 17:45                                                 *
+ * Last Modified: 22.5.2017 17:49                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -42,6 +42,7 @@ namespace Drnasin\Session;
  */
 class SessionHandler implements \SessionHandlerInterface
 {
+    protected $hashedEncryptionKey;
     /**
      * Database connection.
      * @var \PDO
@@ -107,6 +108,7 @@ class SessionHandler implements \SessionHandlerInterface
             throw new \Exception(sprintf("unknown hash algo '%s' received in %s", $hashAlgo, __METHOD__));
         }
         $this->hashAlgo = $hashAlgo;
+        $this->hashedEncryptionKey = hash($hashAlgo, $encryptionKey, true);
 
         if (!in_array($cipher, openssl_get_cipher_methods())) {
             throw new \Exception(sprintf("unknown cipher method '%s' received in %s", $cipher, __METHOD__));
@@ -187,8 +189,7 @@ class SessionHandler implements \SessionHandlerInterface
      */
     protected function encrypt($data, $iv)
     {
-        $hashedEncryptionKey = hash($this->hashAlgo, $this->encryptionKey, true);
-        $encryptedData = openssl_encrypt($data, $this->cipher, $hashedEncryptionKey, OPENSSL_RAW_DATA, $iv);
+        $encryptedData = openssl_encrypt($data, $this->cipher, $this->hashedEncryptionKey, OPENSSL_RAW_DATA, $iv);
 
         if (false === $encryptedData) {
             throw new \Exception(sprintf('session data encryption failed in %s. encryption error: %s', __METHOD__,
@@ -210,8 +211,7 @@ class SessionHandler implements \SessionHandlerInterface
     protected function decrypt($data, $iv)
     {
         $data = base64_decode($data);
-        $hashedEncryptionKey = hash($this->hashAlgo, $this->encryptionKey, true);
-        $decryptedData = openssl_decrypt($data, $this->cipher, $hashedEncryptionKey, OPENSSL_RAW_DATA, $iv);
+        $decryptedData = openssl_decrypt($data, $this->cipher, $this->hashedEncryptionKey, OPENSSL_RAW_DATA, $iv);
 
         if (false === $decryptedData) {
             throw new \Exception(sprintf('session data decryption failed in %s. decryption error: %s', __METHOD__,
