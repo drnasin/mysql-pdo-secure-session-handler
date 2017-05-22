@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandler.php                                                       *
- * Last Modified: 22.5.2017 17:49                                                 *
+ * Last Modified: 22.5.2017 17:55                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -42,7 +42,6 @@ namespace Drnasin\Session;
  */
 class SessionHandler implements \SessionHandlerInterface
 {
-    protected $hashedEncryptionKey;
     /**
      * Database connection.
      * @var \PDO
@@ -62,6 +61,12 @@ class SessionHandler implements \SessionHandlerInterface
      * @var string
      */
     protected $encryptionKey;
+    /**
+     * Encryption key, hashed using:
+     * hash($hashAlgo, $encryptionKey);
+     * @var string
+     */
+    protected $hashedEncryptionKey;
     /**
      * Any value from hash_algos() array.
      * Default is sha512
