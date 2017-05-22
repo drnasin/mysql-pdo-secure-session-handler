@@ -10,7 +10,7 @@ This is a mysql secure session handler with openssl encryption/decryption of ses
 ### Encryption
 Encryption logic is as follows.
 
-We have one GENERAL encryption key (keep this SAFE)! This can be a simple string, hash or even byte based.
+We have one GENERAL encryption key (keep this SAFE)! This can be a simple string, hash or whatever.
 
 When session is being generated an initialisation vector for that session is also generated (you can think of it as
 a 'per session' encryption key). This initialisation vector ('iv') is used WITH our hashed general encryption key to encrypt/decrypt the data.
