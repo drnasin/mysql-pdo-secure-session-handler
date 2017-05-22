@@ -31,7 +31,7 @@ Update database variables in tests/phpunit.xml, then
 run: `composer tests`
 
 ### Code coverage
-Code coverage will be generated in tests/build directory.
+Code coverage will be generated in tests/code-coverage-report directory.
 
 
 
