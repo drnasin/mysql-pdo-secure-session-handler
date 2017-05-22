@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandler.php                                                       *
- * Last Modified: 22.5.2017 17:55                                                 *
+ * Last Modified: 22.5.2017 17:58                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -184,7 +184,7 @@ class SessionHandler implements \SessionHandlerInterface
     }
 
     /**
-     * Encrypts the data using $iv and hashed $this->encryptionKey.
+     * Encrypts the data with openssl cipher using $iv and hashed $this->encryptionKey.
      *
      * @param $data
      * @param $iv
@@ -197,7 +197,7 @@ class SessionHandler implements \SessionHandlerInterface
         $encryptedData = openssl_encrypt($data, $this->cipher, $this->hashedEncryptionKey, OPENSSL_RAW_DATA, $iv);
 
         if (false === $encryptedData) {
-            throw new \Exception(sprintf('session data encryption failed in %s. encryption error: %s', __METHOD__,
+            throw new \Exception(sprintf('data encryption failed in %s. error: %s', __METHOD__,
                 openssl_error_string()));
         }
 
@@ -205,7 +205,7 @@ class SessionHandler implements \SessionHandlerInterface
     }
 
     /**
-     * Decrypts the data using $iv and hashed $this->encryptionKey.
+     * Decrypts the data with openssl cipher using $iv and hashed $this->encryptionKey.
      *
      * @param string $data base64 encoded string
      * @param string $iv
@@ -219,7 +219,7 @@ class SessionHandler implements \SessionHandlerInterface
         $decryptedData = openssl_decrypt($data, $this->cipher, $this->hashedEncryptionKey, OPENSSL_RAW_DATA, $iv);
 
         if (false === $decryptedData) {
-            throw new \Exception(sprintf('session data decryption failed in %s. decryption error: %s', __METHOD__,
+            throw new \Exception(sprintf('data decryption failed in %s. error: %s', __METHOD__,
                 openssl_error_string()));
         }
 
