@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandler.php                                                       *
- * Last Modified: 22.5.2017 16:28                                                 *
+ * Last Modified: 22.5.2017 16:30                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -103,7 +103,7 @@ class SessionHandler implements \SessionHandlerInterface
         $this->encryptionKey = $encryptionKey;
 
         if (!in_array($hashAlgo, hash_algos())) {
-            throw new \Exception(sprintf("unkown hash algo '%s' received in %s", $hashAlgo, __METHOD__));
+            throw new \Exception(sprintf("unknown hash algo '%s' received in %s", $hashAlgo, __METHOD__));
         }
         $this->hashAlgo = $hashAlgo;
 
