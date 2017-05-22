@@ -29,9 +29,12 @@ check `example.php`
 If you need any help let me know. Just use the "Issues" tab...
 
 ### Tests
-Update database variables in tests/phpunit.xml
+Update database variables in tests/phpunit.xml, then
 
-Run: `composer tests`
+run: `composer tests`
+
+### Code coverage
+Code coverage will be generated in tests/build directory.
 
 
 
