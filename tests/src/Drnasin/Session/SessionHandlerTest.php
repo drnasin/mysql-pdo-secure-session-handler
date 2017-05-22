@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandlerTest.php                                                   *
- * Last Modified: 22.5.2017 9:47                                                  *
+ * Last Modified: 22.5.2017 12:45                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -96,7 +96,7 @@ class SessionHandlerTest extends TestCase
      */
     public function testUnknownTableName($sessionId, $sessionData)
     {
-        $handler = new SessionHandler($this->pdo, 'non-existing-table', $this->secretKey);
+        $handler = new SessionHandler($this->pdo, 'NonExistingTable', $this->secretKey);
         $this->assertFalse($handler->write($sessionId, $sessionData));
     }
 

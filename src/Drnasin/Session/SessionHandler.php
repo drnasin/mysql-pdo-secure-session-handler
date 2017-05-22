@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandler.php                                                       *
- * Last Modified: 22.5.2017 10:24                                                 *
+ * Last Modified: 22.5.2017 12:48                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -171,8 +171,9 @@ class SessionHandler implements \SessionHandlerInterface
 
     /**
      * Garbage Collector.
-     * Lifetime of session is stored is in the database therefore $lifetime
-     * is not used.
+     * Lifetime of a session is stored in the database,
+     * therefore $lifetime is not used.
+     * @see \SessionHandlerInterface::gc()
      *
      * @param int $lifetime (sec.)
      *
