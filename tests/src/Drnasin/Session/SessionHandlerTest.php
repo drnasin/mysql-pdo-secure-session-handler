@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandlerTest.php                                                   *
- * Last Modified: 22.5.2017 14:58                                                 *
+ * Last Modified: 22.5.2017 17:01                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -53,7 +53,7 @@ class SessionHandlerTest extends TestCase
      * This is our 'general encryption key'
      * @var string
      */
-    protected $secretKey;
+    protected $encryptionKey;
 
     /**
      * Hate using globals but this is a phpunit mechanism of exposing
@@ -64,8 +64,8 @@ class SessionHandlerTest extends TestCase
     {
         $dsn = sprintf($GLOBALS['DB_DSN'], $GLOBALS['DB_HOST'], $GLOBALS['DB_NAME'], $GLOBALS['DB_PORT'], $GLOBALS['DB_CHARSET']);
         $this->pdo = new \PDO($dsn, $GLOBALS['DB_USER'], $GLOBALS['DB_PASS']);
-        $this->secretKey = hash('sha512', 'phpUnit tests');
-        $this->handler = new SessionHandler($this->pdo, $GLOBALS['DB_TABLENAME'], $this->secretKey);
+        $this->encryptionKey = hash('sha512', 'phpUnit tests');
+        $this->handler = new SessionHandler($this->pdo, $GLOBALS['DB_TABLENAME'], $this->encryptionKey);
     }
 
     /**
@@ -75,7 +75,16 @@ class SessionHandlerTest extends TestCase
     {
         $this->assertAttributeEquals($this->pdo, 'pdo', $this->handler);
         $this->assertAttributeEquals($GLOBALS['DB_TABLENAME'], 'sessionsTableName', $this->handler);
-        $this->assertAttributeEquals($this->secretKey, 'encryptionKey', $this->handler);
+        $this->assertAttributeEquals($this->encryptionKey, 'encryptionKey', $this->handler);
+    }
+
+    /**
+     * @group negative-tests
+     * @expectedException \Exception
+     */
+    public function testConstructorUsingUnknownHashAlgo()
+    {
+        (new SessionHandler($this->pdo, $GLOBALS['DB_TABLENAME'], $this->encryptionKey, 'NonExistingHashAlgo'));
     }
 
     /**
@@ -84,7 +93,7 @@ class SessionHandlerTest extends TestCase
      */
     public function testConstructorUsingUnknownCipherMethod()
     {
-        (new SessionHandler($this->pdo, $GLOBALS['DB_TABLENAME'], $this->secretKey, 'NonExistingCipher'));
+        (new SessionHandler($this->pdo, $GLOBALS['DB_TABLENAME'], $this->encryptionKey, 'sha512', 'NonExistingCipher'));
     }
 
     /**
@@ -96,7 +105,7 @@ class SessionHandlerTest extends TestCase
      */
     public function testUnknownTableName($sessionId, $sessionData)
     {
-        $handler = new SessionHandler($this->pdo, 'NonExistingTable', $this->secretKey);
+        $handler = new SessionHandler($this->pdo, 'NonExistingTable', $this->encryptionKey);
         $this->assertFalse($handler->write($sessionId, $sessionData));
     }
 
@@ -104,7 +113,7 @@ class SessionHandlerTest extends TestCase
      * @group negative-tests
      * @expectedException \Exception
      */
-    public function testConstructorUsingEmptySecretKey()
+    public function testConstructorUsingEmptyEncryptionKey()
     {
         (new SessionHandler($this->pdo, $GLOBALS['DB_TABLENAME'], ''));
     }
@@ -167,7 +176,7 @@ class SessionHandlerTest extends TestCase
     public function sessionProvider()
     {
         $sessionId = md5(__NAMESPACE__);
-        $sessionData = 'Lorem ipsum dolor sit amet!';
+        $sessionData = 'Lorem ipsum dolor sit amet';
 
         return [
             [$sessionId, $sessionData]
