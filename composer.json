@@ -3,7 +3,7 @@
   "version": "1.5.0",
   "license": "MIT",
   "type": "library",
-  "description": "Mysql secure session handler with AES-256-CTR encryption of session data and 'per session' based lifetime.",
+  "description": "Mysql secure session handler with openssl encryption of session data and 'per session' based lifetime.",
   "keywords": [
     "php",
     "mysql",
@@ -13,7 +13,8 @@
     "session handler",
     "encryption",
     "encrypted",
-    "session data"
+    "session data",
+    "openssl"
   ],
   "homepage": "https://github.com/drnasin/mysql-pdo-secure-session-handler",
   "authors": [
