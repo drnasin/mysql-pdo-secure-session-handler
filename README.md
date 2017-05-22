@@ -9,7 +9,7 @@ This is a mysql secure session handler with AES encryption of session data.
         - this offers a great control over session (when debugging)
 
 ### Encryption
-Encryption logic is as folows.
+Encryption logic is as follows.
 
 We have one GENERAL private key (keep this SAFE)! This can be a simple string, hash or even byte based.
 
