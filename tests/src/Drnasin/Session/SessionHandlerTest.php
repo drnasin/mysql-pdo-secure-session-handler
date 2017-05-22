@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandlerTest.php                                                   *
- * Last Modified: 22.5.2017 12:45                                                 *
+ * Last Modified: 22.5.2017 14:58                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -75,7 +75,7 @@ class SessionHandlerTest extends TestCase
     {
         $this->assertAttributeEquals($this->pdo, 'pdo', $this->handler);
         $this->assertAttributeEquals($GLOBALS['DB_TABLENAME'], 'sessionsTableName', $this->handler);
-        $this->assertAttributeEquals($this->secretKey, 'secretKey', $this->handler);
+        $this->assertAttributeEquals($this->secretKey, 'encryptionKey', $this->handler);
     }
 
     /**
