@@ -1,4 +1,4 @@
 .idea
 vendor
-tests/build
+tests/code-coverage-report
 composer.lock
