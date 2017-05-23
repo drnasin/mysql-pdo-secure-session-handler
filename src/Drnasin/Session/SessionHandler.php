@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandler.php                                                       *
- * Last Modified: 23.5.2017 14:52                                                 *
+ * Last Modified: 23.5.2017 22:06                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -111,6 +111,13 @@ class SessionHandler implements \SessionHandlerInterface
             throw new \Exception(sprintf("unknown hash algorithm '%s' received in %s", $hashAlgorithm, __METHOD__));
         }
         $this->hashAlgorithm = $hashAlgorithm;
+
+        /**
+         * same as hash($hashAlgorithm, $encryptionKey, true);
+         *
+         * Last parameter, if set to true, will return BINARY data,
+         * otherwise hex.
+         * */
         $this->hashedEncryptionKey = openssl_digest($encryptionKey, $hashAlgorithm, true);
 
         if (!in_array($cipher, openssl_get_cipher_methods(true))) {
@@ -128,6 +135,7 @@ class SessionHandler implements \SessionHandlerInterface
      * @param string $data raw session data
      *
      * @return bool
+     * @throws \Exception
      */
     public function write($session_id, $data)
     {
@@ -135,8 +143,16 @@ class SessionHandler implements \SessionHandlerInterface
          * First generate the session initialisation vector (iv) and then
          * use it together with hashed encryption key to encrypt the session data,
          * then write everything to database.
+         *
+         * @important iv must have the same length as the cipher block size (128 bits, aka 16 bytes for AES256).
+         * $iv will be in binary format, you need to bin2hex the data if you want hexadecimal representation.
          */
-        $iv = openssl_random_pseudo_bytes(openssl_cipher_iv_length($this->cipher));
+        $iv = openssl_random_pseudo_bytes(openssl_cipher_iv_length($this->cipher), $strong);
+
+        if(!$strong) {
+            throw new \Exception(sprintf('generated iv for chosen cipher %s is not strong enough', $this->cipher));
+        }
+
         $encryptedData = $this->encrypt($data, $iv);
 
         $sql = $this->pdo->prepare("REPLACE INTO {$this->sessionsTableName} (session_id, modified, session_data, lifetime, init_vector) 
