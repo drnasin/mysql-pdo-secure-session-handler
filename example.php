@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: example.php                                                              *
- * Last Modified: 22.5.2017 16:41                                                 *
+ * Last Modified: 23.5.2017 14:15                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -48,7 +48,7 @@ $sessionTableName = 'sessions';
  * SessionHanlder class already hashes the "encryption key" before enc/dec ;) )
  * Whatever it is just make sure you keep it SAFE!
  */
-$encryptionKey = hash('sha512', 'secret-string');
+$encryptionKey = hash('sha256', 'some-secret-key');
 
 $dsn = sprintf('mysql:host=%s;dbname=%s;port=%d;charset=%s', $dbSettings['host'], $dbSettings['name'],
     $dbSettings['port'], $dbSettings['charset']);

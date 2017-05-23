@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandler.php                                                       *
- * Last Modified: 22.5.2017 17:58                                                 *
+ * Last Modified: 23.5.2017 14:13                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -55,28 +55,27 @@ class SessionHandler implements \SessionHandlerInterface
     /**
      * 'Encryption key'.
      * Used in combination with session's initialisation vector (IV) to encrypt/decrypt the session data.
-     * Value of this key can be anything you want (string, hash or even openssl_random_pseudo_bytes())
-     * as long as you keep it SAFE and PRIVATE!
+     * Keep it SAFE and PRIVATE!
      * @important encryption key is hashed using $hashAlgo before enryption/decryption
      * @var string
      */
     protected $encryptionKey;
     /**
      * Encryption key, hashed using:
-     * hash($hashAlgo, $encryptionKey);
+     * hash($hashAlgorithm, $encryptionKey);
      * @var string
      */
     protected $hashedEncryptionKey;
     /**
-     * Any value from hash_algos() array.
-     * Default is sha512
+     * Any value from openssl_get_md_methods() array.
+     * Default is sha256
      * @var string
-     * @see hash_algos()
+     * @see openssl_get_md_methods()
      */
-    protected $hashAlgo;
+    protected $hashAlgorithm;
     /**
      * Encryption/decryption cipher method.
-     * Default is 'AES-256-CTR'.
+     * Default is 'AES-256-CBC'.
      * @see openssl_get_cipher_methods()
      * @var string
      */
@@ -88,7 +87,7 @@ class SessionHandler implements \SessionHandlerInterface
      * @param \PDO   $pdo
      * @param string $sessionsTableName
      * @param string $encryptionKey
-     * @param string $hashAlgo
+     * @param string $hashAlgorithm
      * @param string $cipher
      *
      * @throws \Exception
@@ -97,8 +96,8 @@ class SessionHandler implements \SessionHandlerInterface
         \PDO $pdo,
         $sessionsTableName,
         $encryptionKey,
-        $hashAlgo = 'sha512',
-        $cipher = 'AES-256-CTR'
+        $hashAlgorithm = 'SHA256',
+        $cipher = 'AES-256-CBC'
     ) {
         $this->pdo = $pdo;
         $this->sessionsTableName = (string)$sessionsTableName;
@@ -108,14 +107,13 @@ class SessionHandler implements \SessionHandlerInterface
         }
         $this->encryptionKey = $encryptionKey;
 
-        $hashAlgo = strtolower($hashAlgo);
-        if (!in_array($hashAlgo, hash_algos())) {
-            throw new \Exception(sprintf("unknown hash algo '%s' received in %s", $hashAlgo, __METHOD__));
+        if (!in_array($hashAlgorithm, openssl_get_md_methods(true))) {
+            throw new \Exception(sprintf("unknown hash algo '%s' received in %s", $hashAlgorithm, __METHOD__));
         }
-        $this->hashAlgo = $hashAlgo;
-        $this->hashedEncryptionKey = hash($hashAlgo, $encryptionKey, true);
+        $this->hashAlgorithm = $hashAlgorithm;
+        $this->hashedEncryptionKey = openssl_digest($encryptionKey, $hashAlgorithm, true);
 
-        if (!in_array($cipher, openssl_get_cipher_methods())) {
+        if (!in_array($cipher, openssl_get_cipher_methods(true))) {
             throw new \Exception(sprintf("unknown cipher method '%s' received in %s", $cipher, __METHOD__));
         }
         $this->cipher = $cipher;
@@ -137,11 +135,9 @@ class SessionHandler implements \SessionHandlerInterface
          * First generate the session initialisation vector (iv) and then
          * use it together with hashed encryption key to encrypt the session data,
          * then write everything to database.
-         *
-         * For the default cipher (AES-256-CTR) 'iv' length will be 16, that's 128 bits
          */
         $iv = openssl_random_pseudo_bytes(openssl_cipher_iv_length($this->cipher));
-        $encryptedData = $this->encrypt($data, $iv);
+        $encodedEncryptedData = base64_encode($this->encrypt($data, $iv));
         $sessionLifetime = ini_get('session.gc_maxlifetime');
 
         $sql = $this->pdo->prepare("REPLACE INTO {$this->sessionsTableName} (session_id, modified, session_data, lifetime, init_vector) 
@@ -149,10 +145,31 @@ class SessionHandler implements \SessionHandlerInterface
 
         return $sql->execute([
             'session_id'   => $session_id,
-            'session_data' => $encryptedData,
+            'session_data' => $encodedEncryptedData,
             'lifetime'     => $sessionLifetime,
             'iv'           => $iv
         ]);
+    }
+
+    /**
+     * Encrypts the data with openssl cipher using $iv and hashed $this->encryptionKey.
+     *
+     * @param $data
+     * @param $iv string binary initialisation vector
+     *
+     * @return string (raw binary data)
+     * @throws \Exception
+     */
+    protected function encrypt($data, $iv)
+    {
+        $encryptedData = openssl_encrypt($data, $this->cipher, $this->hashedEncryptionKey, OPENSSL_RAW_DATA, $iv);
+
+        if (false === $encryptedData) {
+            throw new \Exception(sprintf('data encryption failed in %s. error: %s', __METHOD__,
+                openssl_error_string()));
+        }
+
+        return $encryptedData;
     }
 
     /**
@@ -176,38 +193,17 @@ class SessionHandler implements \SessionHandlerInterface
 
         if ($executed && $sql->rowCount()) {
             $session = $sql->fetchObject();
-
-            return $this->decrypt($session->session_data, $session->init_vector);
+            $encryptedData = base64_decode($session->session_data);
+            return $this->decrypt($encryptedData, $session->init_vector);
         } else {
             return '';
         }
     }
 
     /**
-     * Encrypts the data with openssl cipher using $iv and hashed $this->encryptionKey.
-     *
-     * @param $data
-     * @param $iv
-     *
-     * @return string
-     * @throws \Exception
-     */
-    protected function encrypt($data, $iv)
-    {
-        $encryptedData = openssl_encrypt($data, $this->cipher, $this->hashedEncryptionKey, OPENSSL_RAW_DATA, $iv);
-
-        if (false === $encryptedData) {
-            throw new \Exception(sprintf('data encryption failed in %s. error: %s', __METHOD__,
-                openssl_error_string()));
-        }
-
-        return base64_encode($encryptedData);
-    }
-
-    /**
      * Decrypts the data with openssl cipher using $iv and hashed $this->encryptionKey.
      *
-     * @param string $data base64 encoded string
+     * @param string $data raw string
      * @param string $iv
      *
      * @return string
@@ -215,7 +211,12 @@ class SessionHandler implements \SessionHandlerInterface
      */
     protected function decrypt($data, $iv)
     {
-        $data = base64_decode($data);
+        // integrity check
+        $ivLength = openssl_cipher_iv_length($this->cipher);
+        if (strlen($data) < $ivLength) {
+            throw new \Exception(sprintf('data integrity check failed in %s', strlen($data), $ivLength, __METHOD__));
+        }
+
         $decryptedData = openssl_decrypt($data, $this->cipher, $this->hashedEncryptionKey, OPENSSL_RAW_DATA, $iv);
 
         if (false === $decryptedData) {

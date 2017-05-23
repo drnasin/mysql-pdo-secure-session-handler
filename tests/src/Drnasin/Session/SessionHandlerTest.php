@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandlerTest.php                                                   *
- * Last Modified: 22.5.2017 17:01                                                 *
+ * Last Modified: 23.5.2017 14:15                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -64,7 +64,7 @@ class SessionHandlerTest extends TestCase
     {
         $dsn = sprintf($GLOBALS['DB_DSN'], $GLOBALS['DB_HOST'], $GLOBALS['DB_NAME'], $GLOBALS['DB_PORT'], $GLOBALS['DB_CHARSET']);
         $this->pdo = new \PDO($dsn, $GLOBALS['DB_USER'], $GLOBALS['DB_PASS']);
-        $this->encryptionKey = hash('sha512', 'phpUnit tests');
+        $this->encryptionKey = hash('sha256', 'some-secret-key');
         $this->handler = new SessionHandler($this->pdo, $GLOBALS['DB_TABLENAME'], $this->encryptionKey);
     }
 
@@ -93,7 +93,7 @@ class SessionHandlerTest extends TestCase
      */
     public function testConstructorUsingUnknownCipherMethod()
     {
-        (new SessionHandler($this->pdo, $GLOBALS['DB_TABLENAME'], $this->encryptionKey, 'sha512', 'NonExistingCipher'));
+        (new SessionHandler($this->pdo, $GLOBALS['DB_TABLENAME'], $this->encryptionKey, 'sha256', 'NonExistingCipher'));
     }
 
     /**
@@ -165,7 +165,7 @@ class SessionHandlerTest extends TestCase
      */
     public function testNonExistingSessionId()
     {
-        $nonExistingSessionId = md5(time());
+        $nonExistingSessionId = bin2hex(openssl_random_pseudo_bytes(16));
         $this->assertEmpty($this->handler->read($nonExistingSessionId));
     }
 
