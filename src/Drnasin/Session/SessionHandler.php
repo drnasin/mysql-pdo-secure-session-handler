@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandler.php                                                       *
- * Last Modified: 23.5.2017 14:21                                                 *
+ * Last Modified: 23.5.2017 14:52                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -108,7 +108,7 @@ class SessionHandler implements \SessionHandlerInterface
         $this->encryptionKey = $encryptionKey;
 
         if (!in_array($hashAlgorithm, openssl_get_md_methods(true))) {
-            throw new \Exception(sprintf("unknown hash algo '%s' received in %s", $hashAlgorithm, __METHOD__));
+            throw new \Exception(sprintf("unknown hash algorithm '%s' received in %s", $hashAlgorithm, __METHOD__));
         }
         $this->hashAlgorithm = $hashAlgorithm;
         $this->hashedEncryptionKey = openssl_digest($encryptionKey, $hashAlgorithm, true);
@@ -138,7 +138,6 @@ class SessionHandler implements \SessionHandlerInterface
          */
         $iv = openssl_random_pseudo_bytes(openssl_cipher_iv_length($this->cipher));
         $encryptedData = $this->encrypt($data, $iv);
-        $sessionLifetime = ini_get('session.gc_maxlifetime');
 
         $sql = $this->pdo->prepare("REPLACE INTO {$this->sessionsTableName} (session_id, modified, session_data, lifetime, init_vector) 
                                     VALUES (:session_id, NOW(), :session_data, :lifetime, :iv)");
@@ -146,7 +145,7 @@ class SessionHandler implements \SessionHandlerInterface
         return $sql->execute([
             'session_id'   => $session_id,
             'session_data' => base64_encode($encryptedData),
-            'lifetime'     => $sessionLifetime,
+            'lifetime'     => ini_get('session.gc_maxlifetime'),
             'iv'           => $iv
         ]);
     }
@@ -193,8 +192,7 @@ class SessionHandler implements \SessionHandlerInterface
 
         if ($executed && $sql->rowCount()) {
             $session = $sql->fetchObject();
-            $session->session_data = base64_decode($session->session_data);
-            return $this->decrypt($session->session_data, $session->init_vector);
+            return $this->decrypt(base64_decode($session->session_data), $session->init_vector);
         } else {
             return '';
         }
