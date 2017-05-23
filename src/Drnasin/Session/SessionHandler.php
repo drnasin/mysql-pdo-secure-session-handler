@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandler.php                                                       *
- * Last Modified: 23.5.2017 14:13                                                 *
+ * Last Modified: 23.5.2017 14:21                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -137,7 +137,7 @@ class SessionHandler implements \SessionHandlerInterface
          * then write everything to database.
          */
         $iv = openssl_random_pseudo_bytes(openssl_cipher_iv_length($this->cipher));
-        $encodedEncryptedData = base64_encode($this->encrypt($data, $iv));
+        $encryptedData = $this->encrypt($data, $iv);
         $sessionLifetime = ini_get('session.gc_maxlifetime');
 
         $sql = $this->pdo->prepare("REPLACE INTO {$this->sessionsTableName} (session_id, modified, session_data, lifetime, init_vector) 
@@ -145,7 +145,7 @@ class SessionHandler implements \SessionHandlerInterface
 
         return $sql->execute([
             'session_id'   => $session_id,
-            'session_data' => $encodedEncryptedData,
+            'session_data' => base64_encode($encryptedData),
             'lifetime'     => $sessionLifetime,
             'iv'           => $iv
         ]);
@@ -193,8 +193,8 @@ class SessionHandler implements \SessionHandlerInterface
 
         if ($executed && $sql->rowCount()) {
             $session = $sql->fetchObject();
-            $encryptedData = base64_decode($session->session_data);
-            return $this->decrypt($encryptedData, $session->init_vector);
+            $session->session_data = base64_decode($session->session_data);
+            return $this->decrypt($session->session_data, $session->init_vector);
         } else {
             return '';
         }
