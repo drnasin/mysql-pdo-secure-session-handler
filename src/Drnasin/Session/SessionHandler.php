@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandler.php                                                       *
- * Last Modified: 23.5.2017 22:06                                                 *
+ * Last Modified: 24.5.2017 12:37                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -149,8 +149,9 @@ class SessionHandler implements \SessionHandlerInterface
          */
         $iv = openssl_random_pseudo_bytes(openssl_cipher_iv_length($this->cipher), $strong);
 
+        // only in rare cases should this happen (depending on the cipher used)
         if(!$strong) {
-            throw new \Exception(sprintf('generated iv for chosen cipher %s is not strong enough', $this->cipher));
+            throw new \Exception(sprintf('generated iv for the cipher "%s" is not strong enough', $this->cipher));
         }
 
         $encryptedData = $this->encrypt($data, $iv);
@@ -161,7 +162,7 @@ class SessionHandler implements \SessionHandlerInterface
         return $sql->execute([
             'session_id'   => $session_id,
             'session_data' => base64_encode($encryptedData),
-            'lifetime'     => ini_get('session.gc_maxlifetime'),
+            'lifetime'     => ini_get('session.gc_maxlifetime') || 1440,
             'iv'           => $iv
         ]);
     }
