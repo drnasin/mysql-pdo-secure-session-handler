@@ -5,14 +5,15 @@ This is a mysql pdo secure session handler with openssl encryption/decryption of
 
 ### Features
    1. openssl encryption of session data using chosen cipher, 'general encryption key' and initialisation vector ('iv' for short)
-   iv is needed because of the default cipher mode (CBC) used
+   - iv is needed because of the default cipher mode (CBC) used
    2. lifetime of a session is kept in the database (can't be tampered with that easily + leaves the calculation of
-   session expiration to database (example: DELETE FROM session WHERE (modified + INTERVAL lifetime SECOND) < NOW())
+   session expiration to database (example: DELETE FROM sessions WHERE (modified + INTERVAL lifetime SECOND) < NOW())
 
 ### Encryption
-Encryption logic is as follows.
+Encryption logic is as follows (is related to cipher mode used - CBC mode needs initialisation vector. If you are gonna
+change the default encryption mode then the procedure could be slightly different.
 
-We have one GENERAL encryption key (keep this SAFE)! This can be a simple string or whatever.
+We have 'encryption key' (keep this SAFE)! This can be a simple string or whatever.
 Have in mind that the encryption key is first hashed using hash algorithm provided (defaults to sha256) and then applied to encryption/decryption process
 together with the cipher (defaults to AES-256-CBC) and 'per session' generated initialisation vector which is held in the
 database.
