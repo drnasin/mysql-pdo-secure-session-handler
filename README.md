@@ -18,11 +18,10 @@ CBC mode "needs" an "encryption key" (provided by you) and initialisation vector
 ### Encryption
 If you are gonna change the default encryption mode then the procedure could be slightly different.
 
-As per cipher mode used (CBC in this case) data are encrypted using:
+As per cipher mode used (CBC in this case) data are encrypted using:\
     - provided **encryption key** (which is first hash-ed using sha256, before applying)
-    - **initialisation vector (iv)** - generated for every session (string of pseudobytes)
-    generated sequence length must be in colleration with cipher mode used
-    (AES = 128 bits = 16 bytes -> meaning: generated "iv" has to be 16 bytes long)
+    - **initialisation vector (iv)** - generated for every session as a string of (pseudo)bytes, length is in colleration with
+    cipher mode used (AES = 128 bits = 16 bytes -> meaning: generated "iv" has to be 16 bytes long)
 
 When s session is being generated an initialisation vector for that session is also generated (you can think of it as
 a 'per session' encryption key).
