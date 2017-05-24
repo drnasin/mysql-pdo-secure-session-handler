@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandler.php                                                       *
- * Last Modified: 24.5.2017 12:37                                                 *
+ * Last Modified: 24.5.2017 13:44                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -56,7 +56,7 @@ class SessionHandler implements \SessionHandlerInterface
      * 'Encryption key'.
      * Used in combination with session's initialisation vector (IV) to encrypt/decrypt the session data.
      * Keep it SAFE and PRIVATE!
-     * @important encryption key is hashed using $hashAlgo before enryption/decryption
+     * @important encryption key is hashed using $hashAlgorithm before enryption/decryption
      * @var string
      */
     protected $encryptionKey;
@@ -112,18 +112,22 @@ class SessionHandler implements \SessionHandlerInterface
         }
         $this->hashAlgorithm = $hashAlgorithm;
 
+        if (!in_array($cipher, openssl_get_cipher_methods(true))) {
+            throw new \Exception(sprintf("unknown cipher method '%s' received in %s", $cipher, __METHOD__));
+        }
+        $this->cipher = $cipher;
+
         /**
-         * same as hash($hashAlgorithm, $encryptionKey, true);
+         * Hash the encryption key using $hashAlgorithm. We want raw binary data returned
+         * because (although very badly and wrongly documented) enryption key MUST bei n binary format
+         * because we are using OPENSSL_RAW_DATA flag for encryption/decryption .
+         *
+         * openssl:difest IS the same as hash($hashAlgorithm, $encryptionKey, true);
          *
          * Last parameter, if set to true, will return BINARY data,
          * otherwise hex.
          * */
         $this->hashedEncryptionKey = openssl_digest($encryptionKey, $hashAlgorithm, true);
-
-        if (!in_array($cipher, openssl_get_cipher_methods(true))) {
-            throw new \Exception(sprintf("unknown cipher method '%s' received in %s", $cipher, __METHOD__));
-        }
-        $this->cipher = $cipher;
     }
 
     /**
