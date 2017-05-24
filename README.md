@@ -23,9 +23,6 @@ As per cipher mode used (CBC in this case) data are encrypted using:\
     - **initialisation vector (iv)** - generated for every session as a string of (pseudo)bytes, length is in colleration with\
                                        cipher mode used (AES = 128 bits = 16 bytes -> meaning: generated "iv" has to be 16 bytes long)
 
-When s session is being generated an initialisation vector for that session is also generated (you can think of it as
-a 'per session' encryption key).
-
 ### Database
 .sql file (mysql diallect) is provided.
 
