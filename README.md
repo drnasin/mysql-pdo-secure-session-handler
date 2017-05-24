@@ -12,7 +12,8 @@ CBC mode "needs" an "encryption key" (provided by you) and initialisation vector
         - "iv" is needed because of the default cipher mode (CBC) used
    2. lifetime of a session is kept in the database
         - can't be tampered with that easily
-        - calculation of sessions expiration can be left to database (example: _DELETE FROM sessions WHERE (modified + INTERVAL lifetime SECOND) < NOW()_)
+        - calculation of sessions expiration can be left to the database
+        (example: _DELETE FROM sessions WHERE (modified + INTERVAL lifetime SECOND) < NOW()_)
 
 ### Encryption
 Encryption logic is closely related to cipher mode used (deault: AES-256-CBC) - CBC mode needs initialisation vector.
