@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandler.php                                                       *
- * Last Modified: 24.5.2017 13:44                                                 *
+ * Last Modified: 24.5.2017 14:10                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -118,14 +118,11 @@ class SessionHandler implements \SessionHandlerInterface
         $this->cipher = $cipher;
 
         /**
-         * Hash the encryption key using $hashAlgorithm. We want raw binary data returned
-         * because (although very badly and wrongly documented) enryption key MUST bei n binary format
-         * because we are using OPENSSL_RAW_DATA flag for encryption/decryption .
-         *
-         * openssl:difest IS the same as hash($hashAlgorithm, $encryptionKey, true);
-         *
-         * Last parameter, if set to true, will return BINARY data,
-         * otherwise hex.
+         * Hash the encryption key using $hashAlgorithm.
+         * openssl_digest() does the same as hash() function.
+         * Last parameter, if set to true, will return BINARY data,otherwise hex.
+         * We want raw binary data returned because (although very badly and wrongly documented) enryption key
+         * has to be in binary format because we are using OPENSSL_RAW_DATA flag for encryption/decryption.
          * */
         $this->hashedEncryptionKey = openssl_digest($encryptionKey, $hashAlgorithm, true);
     }
@@ -145,17 +142,18 @@ class SessionHandler implements \SessionHandlerInterface
     {
         /**
          * First generate the session initialisation vector (iv) and then
-         * use it together with hashed encryption key to encrypt the session data,
-         * then write everything to database.
-         *
-         * @important iv must have the same length as the cipher block size (128 bits, aka 16 bytes for AES256).
-         * $iv will be in binary format, you need to bin2hex the data if you want hexadecimal representation.
+         * use it together with hashed encryption key to encrypt the data, then write the session to the database.
+         * @important "iv" must have the same length as the cipher block size (128 bits, aka 16 bytes for AES256).
+
+         * @var string of (psuedo) bytes (in binary form, you need to bin2hex the data if you want hexadecimal
+         *      representation.
          */
         $iv = openssl_random_pseudo_bytes(openssl_cipher_iv_length($this->cipher), $strong);
 
         // only in rare cases should this happen (depending on the cipher used)
-        if(!$strong) {
-            throw new \Exception(sprintf('generated iv for the cipher "%s" is not strong enough', $this->cipher));
+        if (!$strong) {
+            throw new \Exception(sprintf('generated initialisation vector for the cipher mode "%s" is not strong enough',
+                $this->cipher));
         }
 
         $encryptedData = $this->encrypt($data, $iv);
@@ -213,6 +211,7 @@ class SessionHandler implements \SessionHandlerInterface
 
         if ($executed && $sql->rowCount()) {
             $session = $sql->fetchObject();
+
             return $this->decrypt(base64_decode($session->session_data), $session->init_vector);
         } else {
             return '';
@@ -269,7 +268,7 @@ class SessionHandler implements \SessionHandlerInterface
      * @return bool
      * @see \SessionHandlerInterface::gc()
      */
-    public function gc($lifetime = null)
+    public function gc($lifetime = 1440)
     {
         return $this->pdo->prepare("DELETE FROM {$this->sessionsTableName} WHERE (modified + INTERVAL lifetime SECOND) < NOW()")
                          ->execute();
