@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandler.php                                                       *
- * Last Modified: 24.5.2017 14:10                                                 *
+ * Last Modified: 24.5.2017 14:13                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -164,7 +164,7 @@ class SessionHandler implements \SessionHandlerInterface
         return $sql->execute([
             'session_id'   => $session_id,
             'session_data' => base64_encode($encryptedData),
-            'lifetime'     => ini_get('session.gc_maxlifetime') || 1440,
+            'lifetime'     => ini_get('session.gc_maxlifetime'),
             'iv'           => $iv
         ]);
     }
