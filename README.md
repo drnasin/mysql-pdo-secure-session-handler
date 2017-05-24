@@ -24,13 +24,15 @@ As per cipher mode used (CBC in this case) data are encrypted using:\
                                        cipher mode used (AES = 128 bits = 16 bytes -> meaning: generated "iv" has to be 16 bytes long)
 
 ### Database
-.sql file (mysql diallect) is provided.
+.sql file (mysql dialect) is provided in *schema* dir.
 
 mysql tip: BINARY field type would also work
 
 ### Usage
 
 `composer require drnasin/mysql-pdo-secure-session-handler`
+
+or git clone the repo.
 
 ### Example
 
