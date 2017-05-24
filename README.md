@@ -15,8 +15,8 @@ Encryption logic is closely related to cipher mode used (deault: AES-256-CBC) - 
 change the default encryption mode then the procedure could be slightly different.
 
 We have 'encryption key' (keep this SAFE)! This can be a simple string or whatever.
-Have in mind that the encryption key is first hashed using hash algorithm provided (defaults to sha256) and then applied to encryption/decryption process
-together with the 'per session' generated initialisation vector (which is held in the
+Have in mind that the encryption key is first hashed using hash algorithm provided (defaults to sha256)
+and then applied to encryption/decryption process together with the 'per session' generated initialisation vector (which is held in the
 database).
 
 When s session is being generated an initialisation vector for that session is also generated (you can think of it as
