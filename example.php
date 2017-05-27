@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: example.php                                                              *
- * Last Modified: 27.5.2017 10:42                                                 *
+ * Last Modified: 27.5.2017 11:25                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -60,15 +60,14 @@ $handler = new \Drnasin\Session\SessionHandler(
 session_set_save_handler($handler, true);
 session_start();
 
-//generate 500 random objects and put them in sessions
-for($i = 1; $i <= 500; $i++) {
-    $_obj = new stdClass();
-    $_obj->hash = bin2hex(openssl_random_pseudo_bytes(16));
-    $_SESSION["example_{$i}"] = $_obj;
-    unset($_obj);
+//generate 50 random sessions
+for($i = 1; $i <= 50; $i++) {
+    $_SESSION["session_{$i}"] = bin2hex(openssl_random_pseudo_bytes(16));
 }
 
-//should print 500
-print count($_SESSION);
+$_SESSION['session_5'] = 'test';
+//should print 50
+echo count($_SESSION), PHP_EOL;
 
-//var_dump($_SESSION);
+//should print 'test'
+echo $_SESSION['session_5'];

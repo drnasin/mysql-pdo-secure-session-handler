@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandler.php                                                       *
- * Last Modified: 27.5.2017 10:51                                                 *
+ * Last Modified: 27.5.2017 11:29                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -232,7 +232,7 @@ class SessionHandler implements \SessionHandlerInterface
      */
     protected function decrypt($data, $iv)
     {
-        if (strlen($data) < self::IV_LENGTH) {
+        if (strlen($data.$iv) < self::IV_LENGTH) {
             throw new \Exception(sprintf('data integrity check failed in %s', strlen($data), self::IV_LENGTH, __METHOD__));
         }
 
