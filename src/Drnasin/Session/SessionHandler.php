@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandler.php                                                       *
- * Last Modified: 27.5.2017 17:21                                                 *
+ * Last Modified: 27.5.2017 18:18                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -129,13 +129,6 @@ class SessionHandler implements \SessionHandlerInterface
         }
 
         $this->encryptionKey = $encryptionKey;
-
-        /**
-         * Hash the encryption key using sha256.
-         * openssl_digest() does the same as hash() function.
-         * Last parameter, if set to true, will return BINARY data,otherwise hex.
-         */
-        $this->hashedEncryptionKey = openssl_digest($encryptionKey, self::HASH_ALGORITHM, true);
     }
 
     /**
@@ -192,10 +185,8 @@ class SessionHandler implements \SessionHandlerInterface
      */
     protected function encrypt($data, $iv)
     {
-        /**
-         * Because of OPENSSL_RAW_DATA - data needs to be raw (not encoded).
-         */
-        $encryptedData = openssl_encrypt($data, self::CIPHER_MODE, $this->hashedEncryptionKey, OPENSSL_RAW_DATA, $iv);
+        $hashedEncryptionKey = $this->hash($this->encryptionKey);
+        $encryptedData = openssl_encrypt($data, self::CIPHER_MODE, $hashedEncryptionKey, OPENSSL_RAW_DATA, $iv);
 
         if (false === $encryptedData) {
             throw new \Exception(sprintf('data encryption failed in %s. error: %s', __METHOD__,
@@ -260,6 +251,7 @@ class SessionHandler implements \SessionHandlerInterface
      */
     protected function decrypt($data, $iv)
     {
+
         // integrity check
         if (strlen($data) < self::IV_LENGTH) {
             throw new \Exception(sprintf('data integrity check failed in %s', strlen($data), self::IV_LENGTH,
@@ -294,7 +286,8 @@ class SessionHandler implements \SessionHandlerInterface
             throw new \Exception(sprintf('IV hash check failed in %s', __METHOD__));
         }
 
-        $decryptedData = openssl_decrypt($encryptedData, self::CIPHER_MODE, $this->hashedEncryptionKey,
+        $hashedEncryptionKey = $this->hash($this->encryptionKey);
+        $decryptedData = openssl_decrypt($encryptedData, self::CIPHER_MODE, $hashedEncryptionKey,
             OPENSSL_RAW_DATA, $iv);
 
         if (false === $decryptedData) {
