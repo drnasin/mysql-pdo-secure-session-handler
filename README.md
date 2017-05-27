@@ -12,7 +12,7 @@ CBC mode "needs":
 ### Features
    1. openssl encryption of session data using chosen cipher, "encryption key" and initialisation vector("iv")
         - "iv" is needed because of the default cipher mode (CBC)
-   2. when session is being created so is the "iv" for that session. "iv "is then stored in the database as binary data\
+   2. when session is being created so is the "iv" for that session. "iv "is then stored in the database as binary data
    2. lifetime of a session is kept in the database because
         - can't be tampered with that easily
         - calculation of the sessions expiration can be left to the database (faster)\
@@ -21,6 +21,7 @@ CBC mode "needs":
 ### Usage
 Generate your encryption key using:\
 `openssl rand -base64 -out storage/enc.key 180`
+then check the included example.
 
 ### Encryption
 As per cipher mode used (CBC in this case) data are encrypted using:\
