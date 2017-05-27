@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: example.php                                                              *
- * Last Modified: 27.5.2017 15:34                                                 *
+ * Last Modified: 27.5.2017 18:20                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -47,7 +47,7 @@ $sessionTableName = 'sessions';
  * Encryption key.
  * make sure you keep it SAFE otherwise no sessions can be decrypted!
  */
-$encryptionKey = file_get_contents(__DIR__ . '/storage/enc.key');
+$encryptionKey = trim(file_get_contents(__DIR__ . '/storage/enc.key'));
 
 $dsn = sprintf('mysql:host=%s;dbname=%s;port=%d;charset=%s', $dbSettings['host'], $dbSettings['name'],
     $dbSettings['port'], $dbSettings['charset']);

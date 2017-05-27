@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandlerTest.php                                                   *
- * Last Modified: 27.5.2017 10:46                                                 *
+ * Last Modified: 27.5.2017 18:19                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -64,7 +64,7 @@ class SessionHandlerTest extends TestCase
     {
         $dsn = sprintf($GLOBALS['DB_DSN'], $GLOBALS['DB_HOST'], $GLOBALS['DB_NAME'], $GLOBALS['DB_PORT'], $GLOBALS['DB_CHARSET']);
         $this->pdo = new \PDO($dsn, $GLOBALS['DB_USER'], $GLOBALS['DB_PASS']);
-        $this->encryptionKey = file_get_contents($GLOBALS['TEST_ENCRYPTION_KEY_FILE']);
+        $this->encryptionKey = trim(file_get_contents($GLOBALS['TEST_ENCRYPTION_KEY_FILE']));
         $this->handler = new SessionHandler($this->pdo, $GLOBALS['DB_TABLENAME'], $this->encryptionKey);
     }
 
