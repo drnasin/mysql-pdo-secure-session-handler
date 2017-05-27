@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandler.php                                                       *
- * Last Modified: 27.5.2017 16:40                                                 *
+ * Last Modified: 27.5.2017 16:45                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -52,7 +52,6 @@ class SessionHandler implements \SessionHandlerInterface
      * @var string
      */
     const CIPHER_MODE = 'AES-256-CBC';
-
     /**
      * Length (in bytes) of iv
      * @var int
@@ -60,14 +59,12 @@ class SessionHandler implements \SessionHandlerInterface
     const IV_LENGTH = 16;
     /**
      * Length of one header block
-     *
      * @var int
      */
     const CHECKUM_BLOCK_LENGTH = 32;
     /**
      * checksum header prepended to data.
      * header consists of hash(encryptedData)+hash(authString)+hash(iv)
-     *
      * @var int
      */
     const CHECKSUM_HEADER_LENTGH = 96; //32*3
@@ -97,7 +94,6 @@ class SessionHandler implements \SessionHandlerInterface
     protected $hashedEncryptionKey;
     /**
      * Used in enc/dec process
-     *
      * @var string
      */
     private $authString = 'Drnasin|SessionHandler|1.5.0';
@@ -111,12 +107,13 @@ class SessionHandler implements \SessionHandlerInterface
      *
      * @throws \Exception
      */
-    public function __construct(\PDO $pdo, $sessionsTableName, $encryptionKey) {
-        if(!extension_loaded('openssl')) {
+    public function __construct(\PDO $pdo, $sessionsTableName, $encryptionKey)
+    {
+        if (!extension_loaded('openssl')) {
             throw new \Exception('openssl extension not found');
         }
 
-        if(!extension_loaded('pdo_mysql')) {
+        if (!extension_loaded('pdo_mysql')) {
             throw new \Exception('pdo_mysql extension not found');
         }
 
@@ -158,7 +155,6 @@ class SessionHandler implements \SessionHandlerInterface
          * First generate the session initialisation vector (iv) and then
          * use it together with hashed encryption key to encrypt the data, then write the session to the database.
          * @important "iv" must have the same length as the cipher block size (128 bits, aka 16 bytes for AES256).
-
          * @var string of (psuedo) bytes (in binary form, you need to bin2hex the data if you want hexadecimal
          *      representation.
          */
@@ -254,7 +250,8 @@ class SessionHandler implements \SessionHandlerInterface
     protected function decrypt($data, $iv)
     {
         if (strlen($data) < self::IV_LENGTH) {
-            throw new \Exception(sprintf('data integrity check failed in %s', strlen($data), self::IV_LENGTH, __METHOD__));
+            throw new \Exception(sprintf('data integrity check failed in %s', strlen($data), self::IV_LENGTH,
+                __METHOD__));
         }
 
         // extract check header
@@ -282,21 +279,22 @@ class SessionHandler implements \SessionHandlerInterface
         $calculatedAuthStringHash = openssl_digest($this->authString, self::HASH_ALGORITHM, true);
 
         // compare everything
-        if(!hash_equals($extractedDataHash, $calculatedDataHash)) {
+        if (!hash_equals($extractedDataHash, $calculatedDataHash)) {
             throw new \Exception(sprintf('data hash check failed in %s', __METHOD__));
         }
 
-        if(!hash_equals($extractedAuthStringHash, $calculatedAuthStringHash)) {
+        if (!hash_equals($extractedAuthStringHash, $calculatedAuthStringHash)) {
             throw new \Exception(sprintf('auth hash check failed in %s', __METHOD__));
         }
 
-        if(!hash_equals($extractedIvHash, $calculatedIvHash)) {
+        if (!hash_equals($extractedIvHash, $calculatedIvHash)) {
             throw new \Exception(sprintf('IV hash check failed in %s', __METHOD__));
         }
 
-        $decryptedData = openssl_decrypt($encryptedData, self::CIPHER_MODE, $this->hashedEncryptionKey, OPENSSL_RAW_DATA, $iv);
+        $decryptedData = openssl_decrypt($encryptedData, self::CIPHER_MODE, $this->hashedEncryptionKey,
+            OPENSSL_RAW_DATA, $iv);
 
-        if (!$decryptedData) {
+        if (false === $decryptedData) {
             throw new \Exception(sprintf('data decryption failed in %s. error: %s', __METHOD__,
                 openssl_error_string()));
         }
