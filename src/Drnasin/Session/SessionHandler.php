@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandler.php                                                       *
- * Last Modified: 27.5.2017 15:36                                                 *
+ * Last Modified: 27.5.2017 15:38                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -93,11 +93,7 @@ class SessionHandler implements \SessionHandlerInterface
      *
      * @throws \Exception
      */
-    public function __construct(
-        \PDO $pdo,
-        $sessionsTableName,
-        $encryptionKey
-    ) {
+    public function __construct(\PDO $pdo, $sessionsTableName, $encryptionKey) {
         if(!extension_loaded('openssl')) {
             throw new \Exception('openssl extension not found');
         }
