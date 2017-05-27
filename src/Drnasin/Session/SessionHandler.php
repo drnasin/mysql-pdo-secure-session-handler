@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandler.php                                                       *
- * Last Modified: 27.5.2017 11:29                                                 *
+ * Last Modified: 27.5.2017 15:12                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -83,6 +83,7 @@ class SessionHandler implements \SessionHandlerInterface
      * @var string
      */
     protected $hashedEncryptionKey;
+
 
     /**
      * SessionHandler constructor.
@@ -190,7 +191,8 @@ class SessionHandler implements \SessionHandlerInterface
                 openssl_error_string()));
         }
 
-        return $encryptedData;
+        $ivHash = openssl_digest($iv, self::HASH_ALGORITHM, true);
+        return $ivHash . $encryptedData;
     }
 
     /**
@@ -232,10 +234,18 @@ class SessionHandler implements \SessionHandlerInterface
      */
     protected function decrypt($data, $iv)
     {
-        if (strlen($data.$iv) < self::IV_LENGTH) {
-            throw new \Exception(sprintf('data integrity check failed in %s', strlen($data), self::IV_LENGTH, __METHOD__));
+        if (strlen($data) < self::IV_LENGTH) {
+            throw new \Exception(sprintf('data integrity check failed in %s', mb_strlen($data), self::IV_LENGTH, __METHOD__));
         }
 
+        $calculatedIvHash = openssl_digest($iv, self::HASH_ALGORITHM, true);
+        $extractedIvHash = substr($data, 0, strlen($calculatedIvHash));
+
+        if(!hash_equals($extractedIvHash, $calculatedIvHash)) {
+            throw new \Exception(sprintf('hash check failed in %s', __METHOD__));
+        }
+
+        $data = substr($data, strlen($calculatedIvHash));
         $decryptedData = openssl_decrypt($data, self::CIPHER_MODE, $this->hashedEncryptionKey, OPENSSL_RAW_DATA, $iv);
 
         if (false === $decryptedData) {
