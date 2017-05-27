@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandler.php                                                       *
- * Last Modified: 27.5.2017 15:38                                                 *
+ * Last Modified: 27.5.2017 16:40                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -58,7 +58,19 @@ class SessionHandler implements \SessionHandlerInterface
      * @var int
      */
     const IV_LENGTH = 16;
-
+    /**
+     * Length of one header block
+     *
+     * @var int
+     */
+    const CHECKUM_BLOCK_LENGTH = 32;
+    /**
+     * checksum header prepended to data.
+     * header consists of hash(encryptedData)+hash(authString)+hash(iv)
+     *
+     * @var int
+     */
+    const CHECKSUM_HEADER_LENTGH = 96; //32*3
     /**
      * Database connection.
      * @var \PDO
@@ -83,6 +95,12 @@ class SessionHandler implements \SessionHandlerInterface
      * @var string
      */
     protected $hashedEncryptionKey;
+    /**
+     * Used in enc/dec process
+     *
+     * @var string
+     */
+    private $authString = 'Drnasin|SessionHandler|1.5.0';
 
     /**
      * SessionHandler constructor.
@@ -167,11 +185,13 @@ class SessionHandler implements \SessionHandlerInterface
 
     /**
      * Encrypts the data with given cipher.
+     * Prepends the chekcsum block of hashes.
      *
      * @param $data
      * @param $iv string binary initialisation vector
      *
      * @return string (raw binary data)
+     *          $encryptedDataHash . $authStringhash . $ivHash . $encryptedData
      * @throws \Exception
      */
     protected function encrypt($data, $iv)
@@ -186,8 +206,11 @@ class SessionHandler implements \SessionHandlerInterface
                 openssl_error_string()));
         }
 
+        $encryptedDataHash = openssl_digest($encryptedData, self::HASH_ALGORITHM, true);
         $ivHash = openssl_digest($iv, self::HASH_ALGORITHM, true);
-        return $ivHash . $encryptedData;
+        $authStringhash = openssl_digest($this->authString, self::HASH_ALGORITHM, true);
+
+        return $encryptedDataHash . $authStringhash . $ivHash . $encryptedData;
     }
 
     /**
@@ -219,7 +242,8 @@ class SessionHandler implements \SessionHandlerInterface
     }
 
     /**
-     * Decrypts the data with openssl cipher using $iv and hashed $this->encryptionKey.
+     * Decrypts the datam extracts the header checksum,
+     * re-calculate every hash and compare with checksum
      *
      * @param string $data raw string
      * @param string $iv
@@ -230,20 +254,49 @@ class SessionHandler implements \SessionHandlerInterface
     protected function decrypt($data, $iv)
     {
         if (strlen($data) < self::IV_LENGTH) {
-            throw new \Exception(sprintf('data integrity check failed in %s', mb_strlen($data), self::IV_LENGTH, __METHOD__));
+            throw new \Exception(sprintf('data integrity check failed in %s', strlen($data), self::IV_LENGTH, __METHOD__));
         }
 
+        // extract check header
+        $checksum = substr($data, 0, self::CHECKSUM_HEADER_LENTGH);
+
+        // extract Data hash
+        $extractedDataHash = substr($checksum, 0, self::CHECKUM_BLOCK_LENGTH);
+
+        // extract Auth string hash
+        $extractedAuthStringHash = substr($checksum, self::CHECKUM_BLOCK_LENGTH, self::CHECKUM_BLOCK_LENGTH);
+
+        // extract IV hash
+        $extractedIvHash = substr($checksum, self::CHECKUM_BLOCK_LENGTH * 2, self::CHECKUM_BLOCK_LENGTH);
+
+        // rest is encrypted data
+        $encryptedData = substr($data, self::CHECKSUM_HEADER_LENTGH);
+
+        // re-calculate data hash
+        $calculatedDataHash = openssl_digest($encryptedData, self::HASH_ALGORITHM, true);
+
+        // re-calculate IV hash
         $calculatedIvHash = openssl_digest($iv, self::HASH_ALGORITHM, true);
-        $extractedIvHash = substr($data, 0, strlen($calculatedIvHash));
+
+        // re-calculate Auth String hash
+        $calculatedAuthStringHash = openssl_digest($this->authString, self::HASH_ALGORITHM, true);
+
+        // compare everything
+        if(!hash_equals($extractedDataHash, $calculatedDataHash)) {
+            throw new \Exception(sprintf('data hash check failed in %s', __METHOD__));
+        }
+
+        if(!hash_equals($extractedAuthStringHash, $calculatedAuthStringHash)) {
+            throw new \Exception(sprintf('auth hash check failed in %s', __METHOD__));
+        }
 
         if(!hash_equals($extractedIvHash, $calculatedIvHash)) {
-            throw new \Exception(sprintf('hash check failed in %s', __METHOD__));
+            throw new \Exception(sprintf('IV hash check failed in %s', __METHOD__));
         }
 
-        $data = substr($data, strlen($calculatedIvHash));
-        $decryptedData = openssl_decrypt($data, self::CIPHER_MODE, $this->hashedEncryptionKey, OPENSSL_RAW_DATA, $iv);
+        $decryptedData = openssl_decrypt($encryptedData, self::CIPHER_MODE, $this->hashedEncryptionKey, OPENSSL_RAW_DATA, $iv);
 
-        if (false === $decryptedData) {
+        if (!$decryptedData) {
             throw new \Exception(sprintf('data decryption failed in %s. error: %s', __METHOD__,
                 openssl_error_string()));
         }
