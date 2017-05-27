@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandler.php                                                       *
- * Last Modified: 27.5.2017 17:07                                                 *
+ * Last Modified: 27.5.2017 17:14                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -202,11 +202,16 @@ class SessionHandler implements \SessionHandlerInterface
                 openssl_error_string()));
         }
 
-        $encryptedDataHash = openssl_digest($encryptedData, self::HASH_ALGORITHM, true);
-        $ivHash = openssl_digest($iv, self::HASH_ALGORITHM, true);
-        $authStringhash = openssl_digest($this->authString, self::HASH_ALGORITHM, true);
+        $encryptedDataHash = $this->hash($encryptedData);
+        $ivHash = $this->hash($iv);
+        $authStringhash = $this->hash($this->authString);
 
         return $encryptedDataHash . $authStringhash . $ivHash . $encryptedData;
+    }
+
+    protected function hash($data)
+    {
+        return openssl_digest($data, self::HASH_ALGORITHM, true);
     }
 
     /**
@@ -270,25 +275,16 @@ class SessionHandler implements \SessionHandlerInterface
         // rest is encrypted data
         $encryptedData = substr($data, self::CHECKSUM_HEADER_LENTGH);
 
-        // re-calculate data hash
-        $calculatedDataHash = openssl_digest($encryptedData, self::HASH_ALGORITHM, true);
-
-        // re-calculate IV hash
-        $calculatedIvHash = openssl_digest($iv, self::HASH_ALGORITHM, true);
-
-        // re-calculate Auth String hash
-        $calculatedAuthStringHash = openssl_digest($this->authString, self::HASH_ALGORITHM, true);
-
         // compare everything
-        if (!hash_equals($extractedDataHash, $calculatedDataHash)) {
+        if (!hash_equals($extractedDataHash, $this->hash($encryptedData))) {
             throw new \Exception(sprintf('data hash check failed in %s', __METHOD__));
         }
 
-        if (!hash_equals($extractedAuthStringHash, $calculatedAuthStringHash)) {
+        if (!hash_equals($extractedAuthStringHash, $this->hash($this->authString))) {
             throw new \Exception(sprintf('auth hash check failed in %s', __METHOD__));
         }
 
-        if (!hash_equals($extractedIvHash, $calculatedIvHash)) {
+        if (!hash_equals($extractedIvHash, $this->hash($iv))) {
             throw new \Exception(sprintf('IV hash check failed in %s', __METHOD__));
         }
 
