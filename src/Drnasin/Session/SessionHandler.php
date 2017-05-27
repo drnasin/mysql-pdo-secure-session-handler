@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandler.php                                                       *
- * Last Modified: 27.5.2017 15:12                                                 *
+ * Last Modified: 27.5.2017 15:36                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -84,7 +84,6 @@ class SessionHandler implements \SessionHandlerInterface
      */
     protected $hashedEncryptionKey;
 
-
     /**
      * SessionHandler constructor.
      *
@@ -159,7 +158,7 @@ class SessionHandler implements \SessionHandlerInterface
 
         $encryptedData = $this->encrypt($data, $iv);
 
-        $sql = $this->pdo->prepare("REPLACE INTO {$this->sessionsTableName} (session_id, modified, session_data, lifetime, init_vector) 
+        $sql = $this->pdo->prepare("REPLACE INTO {$this->sessionsTableName} (session_id, modified, session_data, lifetime, iv) 
                                     VALUES (:session_id, NOW(), :session_data, :lifetime, :iv)");
 
         return $sql->execute([
@@ -205,7 +204,7 @@ class SessionHandler implements \SessionHandlerInterface
      */
     public function read($session_id)
     {
-        $sql = $this->pdo->prepare("SELECT session_data, init_vector
+        $sql = $this->pdo->prepare("SELECT session_data, iv
                                     FROM {$this->sessionsTableName}
                                     WHERE session_id = :session_id 
                                     AND (modified + INTERVAL lifetime SECOND) > NOW()");
@@ -217,7 +216,7 @@ class SessionHandler implements \SessionHandlerInterface
         if ($executed && $sql->rowCount()) {
             $session = $sql->fetchObject();
 
-            return $this->decrypt(base64_decode($session->session_data), $session->init_vector);
+            return $this->decrypt(base64_decode($session->session_data), $session->iv);
         } else {
             return '';
         }

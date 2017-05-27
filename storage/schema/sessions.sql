@@ -7,7 +7,7 @@ CREATE TABLE `sessions` (
   `session_data` text NOT NULL,
   `modified` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `lifetime` int(11) NOT NULL,
-  `init_vector` varbinary(130) NOT NULL
+  `iv` varbinary(16) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 --
