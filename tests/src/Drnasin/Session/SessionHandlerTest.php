@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandlerTest.php                                                   *
- * Last Modified: 23.5.2017 14:15                                                 *
+ * Last Modified: 27.5.2017 10:46                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -64,7 +64,7 @@ class SessionHandlerTest extends TestCase
     {
         $dsn = sprintf($GLOBALS['DB_DSN'], $GLOBALS['DB_HOST'], $GLOBALS['DB_NAME'], $GLOBALS['DB_PORT'], $GLOBALS['DB_CHARSET']);
         $this->pdo = new \PDO($dsn, $GLOBALS['DB_USER'], $GLOBALS['DB_PASS']);
-        $this->encryptionKey = hash('sha256', 'some-secret-key');
+        $this->encryptionKey = file_get_contents($GLOBALS['TEST_ENCRYPTION_KEY_FILE']);
         $this->handler = new SessionHandler($this->pdo, $GLOBALS['DB_TABLENAME'], $this->encryptionKey);
     }
 
@@ -76,24 +76,6 @@ class SessionHandlerTest extends TestCase
         $this->assertAttributeEquals($this->pdo, 'pdo', $this->handler);
         $this->assertAttributeEquals($GLOBALS['DB_TABLENAME'], 'sessionsTableName', $this->handler);
         $this->assertAttributeEquals($this->encryptionKey, 'encryptionKey', $this->handler);
-    }
-
-    /**
-     * @group negative-tests
-     * @expectedException \Exception
-     */
-    public function testConstructorUsingUnknownHashAlgo()
-    {
-        (new SessionHandler($this->pdo, $GLOBALS['DB_TABLENAME'], $this->encryptionKey, 'NonExistingHashAlgo'));
-    }
-
-    /**
-     * @group negative-tests
-     * @expectedException \Exception
-     */
-    public function testConstructorUsingUnknownCipherMethod()
-    {
-        (new SessionHandler($this->pdo, $GLOBALS['DB_TABLENAME'], $this->encryptionKey, 'sha256', 'NonExistingCipher'));
     }
 
     /**

@@ -43,6 +43,7 @@
     }
   },
   "scripts": {
-    "tests": "phpunit -c tests/phpunit.xml"
+    "tests": "phpunit -c tests/phpunit.xml",
+    "gen-key-file": "openssl rand -base64 -out ./storage/enc.key 160"
   }
 }

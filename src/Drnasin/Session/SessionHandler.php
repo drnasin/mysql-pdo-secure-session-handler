@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandler.php                                                       *
- * Last Modified: 24.5.2017 14:13                                                 *
+ * Last Modified: 27.5.2017 10:51                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -43,6 +43,23 @@ namespace Drnasin\Session;
 class SessionHandler implements \SessionHandlerInterface
 {
     /**
+     * Hash algorithm used
+     * @var string
+     */
+    const HASH_ALGORITHM = 'SHA256';
+    /**
+     * Cipher mode used for encryption/decryption
+     * @var string
+     */
+    const CIPHER_MODE = 'AES-256-CBC';
+
+    /**
+     * Length (in bytes) of iv
+     * @var int
+     */
+    const IV_LENGTH = 16;
+
+    /**
      * Database connection.
      * @var \PDO
      */
@@ -66,65 +83,48 @@ class SessionHandler implements \SessionHandlerInterface
      * @var string
      */
     protected $hashedEncryptionKey;
-    /**
-     * Any value from openssl_get_md_methods() array.
-     * Default is sha256
-     * @var string
-     * @see openssl_get_md_methods()
-     */
-    protected $hashAlgorithm;
-    /**
-     * Encryption/decryption cipher method.
-     * Default is 'AES-256-CBC'.
-     * @see openssl_get_cipher_methods()
-     * @var string
-     */
-    protected $cipher;
 
     /**
      * SessionHandler constructor.
      *
-     * @param \PDO   $pdo
-     * @param string $sessionsTableName
-     * @param string $encryptionKey
-     * @param string $hashAlgorithm
-     * @param string $cipher
+     * @param \PDO $pdo
+     * @param      $sessionsTableName
+     * @param      $encryptionKey
      *
      * @throws \Exception
      */
     public function __construct(
         \PDO $pdo,
         $sessionsTableName,
-        $encryptionKey,
-        $hashAlgorithm = 'SHA256',
-        $cipher = 'AES-256-CBC'
+        $encryptionKey
     ) {
+        if(!extension_loaded('openssl')) {
+            throw new \Exception('openssl extension not found');
+        }
+
+        if(!extension_loaded('pdo_mysql')) {
+            throw new \Exception('pdo_mysql extension not found');
+        }
+
         $this->pdo = $pdo;
+
+        if (empty($sessionsTableName)) {
+            throw new \Exception(sprintf('sessions table name is empty in %s', __METHOD__));
+        }
         $this->sessionsTableName = (string)$sessionsTableName;
 
         if (empty($encryptionKey)) {
             throw new \Exception(sprintf('encryption key is empty in %s', __METHOD__));
         }
+
         $this->encryptionKey = $encryptionKey;
 
-        if (!in_array($hashAlgorithm, openssl_get_md_methods(true))) {
-            throw new \Exception(sprintf("unknown hash algorithm '%s' received in %s", $hashAlgorithm, __METHOD__));
-        }
-        $this->hashAlgorithm = $hashAlgorithm;
-
-        if (!in_array($cipher, openssl_get_cipher_methods(true))) {
-            throw new \Exception(sprintf("unknown cipher method '%s' received in %s", $cipher, __METHOD__));
-        }
-        $this->cipher = $cipher;
-
         /**
-         * Hash the encryption key using $hashAlgorithm.
+         * Hash the encryption key using sha256.
          * openssl_digest() does the same as hash() function.
          * Last parameter, if set to true, will return BINARY data,otherwise hex.
-         * We want raw binary data returned because (although very badly and wrongly documented) enryption key
-         * has to be in binary format because we are using OPENSSL_RAW_DATA flag for encryption/decryption.
-         * */
-        $this->hashedEncryptionKey = openssl_digest($encryptionKey, $hashAlgorithm, true);
+         */
+        $this->hashedEncryptionKey = openssl_digest($encryptionKey, self::HASH_ALGORITHM, true);
     }
 
     /**
@@ -148,12 +148,12 @@ class SessionHandler implements \SessionHandlerInterface
          * @var string of (psuedo) bytes (in binary form, you need to bin2hex the data if you want hexadecimal
          *      representation.
          */
-        $iv = openssl_random_pseudo_bytes(openssl_cipher_iv_length($this->cipher), $strong);
+        $iv = openssl_random_pseudo_bytes(self::IV_LENGTH, $strong);
 
-        // only in rare cases should this happen (depending on the cipher used)
+        // should NEVER happen for our cipher mode.
         if (!$strong) {
-            throw new \Exception(sprintf('generated initialisation vector for the cipher mode "%s" is not strong enough',
-                $this->cipher));
+            throw new \Exception(sprintf('generated iv for the cipher mode "%s" is not strong enough',
+                self::CIPHER_MODE));
         }
 
         $encryptedData = $this->encrypt($data, $iv);
@@ -170,7 +170,7 @@ class SessionHandler implements \SessionHandlerInterface
     }
 
     /**
-     * Encrypts the data with openssl cipher using $iv and hashed $this->encryptionKey.
+     * Encrypts the data with given cipher.
      *
      * @param $data
      * @param $iv string binary initialisation vector
@@ -180,7 +180,10 @@ class SessionHandler implements \SessionHandlerInterface
      */
     protected function encrypt($data, $iv)
     {
-        $encryptedData = openssl_encrypt($data, $this->cipher, $this->hashedEncryptionKey, OPENSSL_RAW_DATA, $iv);
+        /**
+         * Because of OPENSSL_RAW_DATA - data needs to be raw (not encoded).
+         */
+        $encryptedData = openssl_encrypt($data, self::CIPHER_MODE, $this->hashedEncryptionKey, OPENSSL_RAW_DATA, $iv);
 
         if (false === $encryptedData) {
             throw new \Exception(sprintf('data encryption failed in %s. error: %s', __METHOD__,
@@ -229,13 +232,11 @@ class SessionHandler implements \SessionHandlerInterface
      */
     protected function decrypt($data, $iv)
     {
-        // integrity check
-        $ivLength = openssl_cipher_iv_length($this->cipher);
-        if (strlen($data) < $ivLength) {
-            throw new \Exception(sprintf('data integrity check failed in %s', strlen($data), $ivLength, __METHOD__));
+        if (strlen($data) < self::IV_LENGTH) {
+            throw new \Exception(sprintf('data integrity check failed in %s', strlen($data), self::IV_LENGTH, __METHOD__));
         }
 
-        $decryptedData = openssl_decrypt($data, $this->cipher, $this->hashedEncryptionKey, OPENSSL_RAW_DATA, $iv);
+        $decryptedData = openssl_decrypt($data, self::CIPHER_MODE, $this->hashedEncryptionKey, OPENSSL_RAW_DATA, $iv);
 
         if (false === $decryptedData) {
             throw new \Exception(sprintf('data decryption failed in %s. error: %s', __METHOD__,

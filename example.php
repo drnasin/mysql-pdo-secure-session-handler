@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: example.php                                                              *
- * Last Modified: 23.5.2017 22:10                                                 *
+ * Last Modified: 27.5.2017 10:42                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -44,11 +44,10 @@ $dbSettings = [
 $sessionTableName = 'sessions';
 
 /**
- * Encryption key can be anything, a simple raw string, hash (although have in mind
- * SessionHanlder class already hashes the "encryption key" before enc/dec ;) )
- * Whatever it is just make sure you keep it SAFE otherwise no sessions can be decrypted!
+ * Encryption key.
+ * make sure you keep it SAFE otherwise no sessions can be decrypted!
  */
-$encryptionKey = hash('sha256', 'some-secret-key');
+$encryptionKey = file_get_contents(__DIR__ . '/storage/enc.key');
 
 $dsn = sprintf('mysql:host=%s;dbname=%s;port=%d;charset=%s', $dbSettings['host'], $dbSettings['name'],
     $dbSettings['port'], $dbSettings['charset']);
@@ -61,12 +60,15 @@ $handler = new \Drnasin\Session\SessionHandler(
 session_set_save_handler($handler, true);
 session_start();
 
-//generate 500 random sessions
+//generate 500 random objects and put them in sessions
 for($i = 1; $i <= 500; $i++) {
-    $_SESSION["example_$i"] = new stdClass(bin2hex(openssl_random_pseudo_bytes(16)));
+    $_obj = new stdClass();
+    $_obj->hash = bin2hex(openssl_random_pseudo_bytes(16));
+    $_SESSION["example_{$i}"] = $_obj;
+    unset($_obj);
 }
 
 //should print 500
 print count($_SESSION);
 
-var_dump($_SESSION);
+//var_dump($_SESSION);
