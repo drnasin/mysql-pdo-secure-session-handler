@@ -6,15 +6,8 @@ This is a mysql pdo secure session handler with **openssl encryption/decryption*
 Default cipher mode is **AES-256-CBC**.
 
 CBC mode "needs":
-    - an "encryption key" and
+    - an "encryption key" and\
     - initialisation vector ("iv") (generated string of pseudobytes in binary format) for encryption/decryption process.
-
-For my needs at the time to have encryption key be a human readable string before hashing and using it was enough.\
-If you need more security, I was toying at the time of writing this class, to use the key file as encryption key
-but ultimately company decided this was enough security (original class accepted ALREADY hashed encryption key).\
-I implented hashing of encryption key into the class before sharing on github to make it more as a "unit" :) But I degress..
-
-Can cetainly be done with key file but then the hashing of encryption key logic could be removed.
 
 ### Features
    1. openssl encryption of session data using chosen cipher, "encryption key" and initialisation vector("iv")
@@ -25,9 +18,11 @@ Can cetainly be done with key file but then the hashing of encryption key logic 
         - calculation of the sessions expiration can be left to the database (faster)\
         (example: _DELETE FROM sessions WHERE (modified + INTERVAL lifetime SECOND) < NOW()_)
 
-### Encryption
-If you are gonna change the default encryption mode then the procedure could be slightly different.
+### Usage
+Generate your encryption key using:\
+`openssl rand -base64 -out storage/enc.key 180`
 
+### Encryption
 As per cipher mode used (CBC in this case) data are encrypted using:\
     - provided **encryption key** (which is first hash-ed using sha256, before applying) \
     - **initialisation vector (iv)** - generated for every session as a string of (pseudo)bytes, length is in colleration with\
