@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandler.php                                                       *
- * Last Modified: 27.5.2017 22:45                                                 *
+ * Last Modified: 29.5.2017 8:51                                                  *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -86,12 +86,6 @@ class SessionHandler implements \SessionHandlerInterface
      * @var string
      */
     protected $encryptionKey;
-    /**
-     * Encryption key, hashed using:
-     * hash($hashAlgorithm, $encryptionKey);
-     * @var string
-     */
-    protected $hashedEncryptionKey;
 
     /**
      * SessionHandler constructor.
@@ -251,8 +245,6 @@ class SessionHandler implements \SessionHandlerInterface
                 __METHOD__));
         }
 
-        $hashedEncryptionKey = $this->hash($this->encryptionKey);
-
         // extract check header
         $checksum = substr($data, 0, self::CHECKSUM_HEADER_LENTGH);
 
@@ -274,6 +266,7 @@ class SessionHandler implements \SessionHandlerInterface
             throw new \Exception(sprintf('IV hash check failed in %s', __METHOD__));
         }
 
+        $hashedEncryptionKey = $this->hash($this->encryptionKey);
         $decryptedData = openssl_decrypt($encryptedData, self::CIPHER_MODE, $hashedEncryptionKey,
             OPENSSL_RAW_DATA, $iv);
 
