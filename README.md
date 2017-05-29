@@ -22,7 +22,7 @@ the plaintext is malleable to a certain degree.
 
 ### Usage
 Generate your encryption key using:
-`openssl rand -base64 -out tests/encryption.key 180`
+`openssl rand -base64 -out tests/encryption.key 180` (recommended key length is 128 - 256)
 then check the included example.
 
 ### Encryption

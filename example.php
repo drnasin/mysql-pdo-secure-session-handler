@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: example.php                                                              *
- * Last Modified: 29.5.2017 18:54                                                 *
+ * Last Modified: 29.5.2017 19:41                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -63,29 +63,44 @@ ob_start();
 $createdSessionIds = [];
 //open 10 sessions and assign values to the SAME variable in every session
 for ($i = 1; $i <= 10; $i++) {
+    // generate session id
     $sessionId = bin2hex(openssl_random_pseudo_bytes(16));
+    // set our id as session id
     session_id($sessionId);
+    //now start the session
     session_start();
-    $_SESSION["someKey"] = sprintf("I'm the original value of key '%s' in session %s", 'someKey', $sessionId);
+    //access via superglobal, set value os key 'someKey'
+    $_SESSION["someKey"] = sprintf("Setting initial value of var '%s' in session %s", 'someKey', $sessionId);
+    //"write to session and close it" (not destroy!) because in the next iteration we are again opening new session
     session_write_close();
 
+    //store opened sessionId and move on
     $createdSessionIds[] = $sessionId;
 }
 
+// walk thru all opened sessions
 foreach ($createdSessionIds as $createdSessionId) {
+    // and re-open each
     session_id($createdSessionId);
     session_start();
+    //print value of someKey in that session
     echo $_SESSION["someKey"], PHP_EOL;
-    $_SESSION["someKey"] = sprintf("I'm the updated value of key '%s' in session %s", 'someKey', $createdSessionId);
+    // change the value
+    $_SESSION["someKey"] = sprintf("Updated value of var '%s' in session %s", 'someKey', $createdSessionId);
     echo $_SESSION["someKey"], PHP_EOL;
+    // again, explicit call becaue of the next iteration.
     session_write_close();
 }
 
 //destroy all created sessions
 foreach ($createdSessionIds as $createdSessionId) {
+    // re-open session
     session_id($createdSessionId);
     session_start();
-    session_destroy();
+    //destroy it (delete)
+    if (session_destroy()) {
+        echo "Session ", $createdSessionId, " destroyed.", PHP_EOL;
+    }
 }
 
 ob_end_flush();
