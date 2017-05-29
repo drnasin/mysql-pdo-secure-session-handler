@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandler.php                                                       *
- * Last Modified: 29.5.2017 21:08                                                 *
+ * Last Modified: 29.5.2017 21:16                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -74,10 +74,10 @@ class SessionHandler implements \SessionHandlerInterface
      */
     protected $sessionsTableName;
     /**
-     * 'Encryption key'.
-     * Used in combination with session's initialisation vector (IV) to encrypt/decrypt the session data.
-     * Keep it SAFE and PRIVATE!
-     * @important encryption key is hashed using $hashAlgorithm before enryption/decryption
+     * 'Encryption key' used for encryption/decryption.
+     * Can be from a string (config array for example) or from a file.
+     * Just make sure you take care of trimming! (ie. openssl adds EOL at the end of output file)
+     * Keep it somewhere SAFE!
      * @var string
      */
     protected $encryptionKey;
