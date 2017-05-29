@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandler.php                                                       *
- * Last Modified: 29.5.2017 20:02                                                 *
+ * Last Modified: 29.5.2017 20:05                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -162,7 +162,8 @@ class SessionHandler implements \SessionHandlerInterface
                 self::CIPHER_MODE));
         }
 
-        $sessionData = base64_encode($this->encrypt($session_data, $iv));
+        // encrypt the data and immediately encode it so we can store it to database
+        $encodedEncryptedData = base64_encode($this->encrypt($session_data, $iv));
         unset($session_data); // cleaning
 
         $sql = $this->pdo->prepare("REPLACE INTO {$this->sessionsTableName} (session_id, modified, session_data, lifetime, iv) 
@@ -170,7 +171,7 @@ class SessionHandler implements \SessionHandlerInterface
 
         return $sql->execute([
             'session_id'   => $session_id,
-            'session_data' => $sessionData,
+            'session_data' => $encodedEncryptedData,
             'lifetime'     => ini_get('session.gc_maxlifetime'),
             'iv'           => $iv
         ]);
