@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandlerTest.php                                                   *
- * Last Modified: 27.5.2017 18:19                                                 *
+ * Last Modified: 29.5.2017 18:23                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -139,7 +139,7 @@ class SessionHandlerTest extends TestCase
      */
     public function testSessionGarbageCollector()
     {
-        $this->assertTrue($this->handler->gc());
+        $this->assertTrue($this->handler->gc(0));
     }
 
     /**

@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandler.php                                                       *
- * Last Modified: 29.5.2017 8:51                                                  *
+ * Last Modified: 29.5.2017 19:15                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -39,6 +39,7 @@ namespace Drnasin\Session;
  * and initialisation vector (IV) which is generated per session.
  * @package Drnasin\Session
  * @author Ante Drnasin
+ * @link https://github.com/drnasin/mysql-pdo-secure-session-handler
  */
 class SessionHandler implements \SessionHandlerInterface
 {
@@ -61,20 +62,23 @@ class SessionHandler implements \SessionHandlerInterface
      * Length of one header block
      * @var int
      */
-    const CHECKUM_BLOCK_LENGTH = 32;
+    const HMAC_HASH_LENGTH = 32;
     /**
-     * checksum header prepended to data.
-     * header consists of hash(encryptedData)+hash(authString)+hash(iv)
+     * Length of one header block
      * @var int
      */
-    const CHECKSUM_HEADER_LENTGH = self::CHECKUM_BLOCK_LENGTH * 2; //32*2
+    const IV_HMAC_LENGTH = 32;
+    /**
+     *
+     */
+    const AUTH_BLOCK_LENGTH = 3;
     /**
      * Database connection.
      * @var \PDO
      */
     protected $pdo;
     /**
-     * Name of the DB table which handles the sessions.
+     * Name of the DB table which holds the sessions.
      * @var string
      */
     protected $sessionsTableName;
@@ -90,9 +94,9 @@ class SessionHandler implements \SessionHandlerInterface
     /**
      * SessionHandler constructor.
      *
-     * @param \PDO $pdo
-     * @param      $sessionsTableName
-     * @param      $encryptionKey
+     * @param \PDO   $pdo
+     * @param string $sessionsTableName
+     * @param string $encryptionKey
      *
      * @throws \Exception
      */
@@ -106,6 +110,8 @@ class SessionHandler implements \SessionHandlerInterface
             throw new \Exception('pdo_mysql extension not found');
         }
 
+        // silence the error reporting from PDO
+        $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_SILENT);
         $this->pdo = $pdo;
 
         if (empty($sessionsTableName)) {
@@ -124,21 +130,28 @@ class SessionHandler implements \SessionHandlerInterface
      * Workflow: Generate initalisation vector for the current session, encrypt the data using encryption key and
      * generated iv, write the session to database. Default session lifetime (usually defaults to 1440) is taken from
      * php.ini -> session.gc_maxlifetime.
+     * @link http://php.net/manual/en/sessionhandlerinterface.write.php
      *
-     * @param int    $session_id session id
-     * @param string $data raw session data
+     * @param string $session_id The session id.
+     * @param string $session_data
+     * The encoded session data. This data is the
+     * result of the PHP internally encoding
+     * the $_SESSION superglobal to a serialized
+     * string and passing it as this parameter.
+     * Please note sessions use an alternative serialization method.
      *
-     * @return bool
+     * @return bool The return value (usually TRUE on success, FALSE on failure).
      * @throws \Exception
+     * @since 5.4.0
      */
-    public function write($session_id, $data)
+    public function write($session_id, $session_data)
     {
         /**
          * First generate the session initialisation vector (iv) and then
          * use it together with hashed encryption key to encrypt the data, then write the session to the database.
          * @important "iv" must have the same length as the cipher block size (128 bits, aka 16 bytes for AES256).
          * @var string of (psuedo) bytes (in binary form, you need to bin2hex the data if you want hexadecimal
-         *      representation.
+         * representation.
          */
         $iv = openssl_random_pseudo_bytes(self::IV_LENGTH, $strong);
 
@@ -148,14 +161,15 @@ class SessionHandler implements \SessionHandlerInterface
                 self::CIPHER_MODE));
         }
 
-        $encryptedData = $this->encrypt($data, $iv);
+        $sessionData = base64_encode($this->encrypt($session_data, $iv));
+        unset($session_data);
 
         $sql = $this->pdo->prepare("REPLACE INTO {$this->sessionsTableName} (session_id, modified, session_data, lifetime, iv) 
                                     VALUES (:session_id, NOW(), :session_data, :lifetime, :iv)");
 
         return $sql->execute([
             'session_id'   => $session_id,
-            'session_data' => base64_encode($encryptedData),
+            'session_data' => $sessionData,
             'lifetime'     => ini_get('session.gc_maxlifetime'),
             'iv'           => $iv
         ]);
@@ -165,47 +179,41 @@ class SessionHandler implements \SessionHandlerInterface
      * Encrypts the data with given cipher.
      * Prepends the chekcsum block of hashes.
      *
-     * @param $data
+     * @param $rawPlaintextData
      * @param $iv string binary initialisation vector
      *
-     * @return string (raw binary data)
-     *          $encryptedDataHash . $authStringhash . $ivHash . $encryptedData
+     * @return string (raw binary data) format: $encryptedDataHash . $ivHash . $encryptedData
      * @throws \Exception
      */
-    protected function encrypt($data, $iv)
+    protected function encrypt($rawPlaintextData, $iv)
     {
-        $hashedEncryptionKey = $this->hash($this->encryptionKey);
-        $encryptedData = openssl_encrypt($data, self::CIPHER_MODE, $hashedEncryptionKey, OPENSSL_RAW_DATA, $iv);
+        $integrityHashHmac = hash_hmac(self::HASH_ALGORITHM, $iv . $rawPlaintextData, session_id(), true);
+        $hashedEncryptionKey = hash(self::HASH_ALGORITHM, $this->encryptionKey, true);
+        $encryptedData = openssl_encrypt($rawPlaintextData, self::CIPHER_MODE, $hashedEncryptionKey, OPENSSL_RAW_DATA,
+            $iv);
+        unset($rawPlaintextData);
 
         if (false === $encryptedData) {
             throw new \Exception(sprintf('data encryption failed in %s. error: %s', __METHOD__,
                 openssl_error_string()));
         }
 
-        $encryptedDataHash = $this->hash($encryptedData);
-        $ivHash = $this->hash($iv);
+        $ivHmac = hash_hmac(self::HASH_ALGORITHM, $iv, session_id(), true);
 
-        return $encryptedDataHash . $ivHash . $encryptedData;
-    }
-
-    /**
-     * Hash the given data with self::HASH_ALGORITHM.
-     * @param $data
-     *
-     * @return string (binary)
-     */
-    protected function hash($data)
-    {
-        return openssl_digest($data, self::HASH_ALGORITHM, true);
+        return $ivHmac . $encryptedData . $integrityHashHmac;
     }
 
     /**
      * Read the session, decrypt the data with openssl cipher method, using session IV (initialisation vector)
      * and encryption key and return the decrypted data.
+     * @link http://php.net/manual/en/sessionhandlerinterface.read.php
      *
-     * @param int $session_id session id
+     * @param string $session_id The session id to read data for.
      *
      * @return string
+     * Returns an encoded string of the read data.
+     * If nothing was read, it must return an empty string.
+     * @since 5.4.0
      */
     public function read($session_id)
     {
@@ -228,13 +236,14 @@ class SessionHandler implements \SessionHandlerInterface
     }
 
     /**
-     * Decrypts the datam extracts the header checksum,
-     * re-calculate every hash and compare with checksum
+     * Decrypts the data, extracts the header checksum,
+     * re-calculates every hash and compares with data from checksum,
+     * if everything goes well returns decrypted data.
      *
      * @param string $data raw string
-     * @param string $iv
+     * @param string $iv in binary form
      *
-     * @return string
+     * @return string decrypted data
      * @throws \Exception
      */
     protected function decrypt($data, $iv)
@@ -245,45 +254,50 @@ class SessionHandler implements \SessionHandlerInterface
                 __METHOD__));
         }
 
-        // extract check header
-        $checksum = substr($data, 0, self::CHECKSUM_HEADER_LENTGH);
+        // extract IV hmac from checksum and compare it to the hmac of $iv coming from the database
+        $extractedIvHmac = substr($data, 0, self::IV_HMAC_LENGTH);
+        $calculatedIvHmac = hash_hmac(self::HASH_ALGORITHM, $iv, session_id(), true);
 
-        // extract Data hash
-        $extractedDataHash = substr($checksum, 0, self::CHECKUM_BLOCK_LENGTH);
-
-        // extract IV hash
-        $extractedIvHash = substr($checksum, self::CHECKUM_BLOCK_LENGTH, self::CHECKUM_BLOCK_LENGTH);
-
-        // rest is encrypted data
-        $encryptedData = substr($data, self::CHECKSUM_HEADER_LENTGH);
-
-        // compare everything
-        if (!hash_equals($extractedDataHash, $this->hash($encryptedData))) {
-            throw new \Exception(sprintf('data hash check failed in %s', __METHOD__));
+        if (!hash_equals($extractedIvHmac, $calculatedIvHmac)) {
+            throw new \Exception(sprintf('iv hmac check failed in %s', __METHOD__));
         }
 
-        if (!hash_equals($extractedIvHash, $this->hash($iv))) {
-            throw new \Exception(sprintf('IV hash check failed in %s', __METHOD__));
-        }
+        // extract hash hmac from the end of the data
+        $extractedHashHmac = substr($data, -self::HMAC_HASH_LENGTH);
 
-        $hashedEncryptionKey = $this->hash($this->encryptionKey);
-        $decryptedData = openssl_decrypt($encryptedData, self::CIPHER_MODE, $hashedEncryptionKey,
-            OPENSSL_RAW_DATA, $iv);
+        // extract the encrypted data
+        $encryptedData = substr($data, self::IV_HMAC_LENGTH, -self::HMAC_HASH_LENGTH);
+        unset($data);
+
+        // hash the encryption key before decryption
+        $hashedEncryptionKey = hash(self::HASH_ALGORITHM, $this->encryptionKey, true);
+
+        // decrypt the data
+        $decryptedData = openssl_decrypt($encryptedData, self::CIPHER_MODE, $hashedEncryptionKey, OPENSSL_RAW_DATA,
+            $iv);
 
         if (false === $decryptedData) {
             throw new \Exception(sprintf('data decryption failed in %s. error: %s', __METHOD__,
                 openssl_error_string()));
         }
 
+        $calculatedHashHmac = hash_hmac(self::HASH_ALGORITHM, $iv . $decryptedData, session_id(), true);
+        if (!hash_equals($extractedHashHmac, $calculatedHashHmac)) {
+            throw new \Exception('data hash hmac mismatch.');
+        }
+
         return $decryptedData;
     }
 
     /**
-     * Deletes the session from the database.
+     * Destroy a session
+     * @link http://php.net/manual/en/sessionhandlerinterface.destroy.php
      *
-     * @param string $session_id
+     * @param string $session_id The session ID being destroyed.
      *
      * @return bool
+     * The return value (usually TRUE on success, FALSE on failure).
+     * @since 5.4.0
      */
     public function destroy($session_id)
     {
@@ -293,41 +307,64 @@ class SessionHandler implements \SessionHandlerInterface
     }
 
     /**
-     * Garbage Collector.
-     * Lifetime of a session is stored in the database, therefor $lifetime is not used.
+     * Cleanup old sessions
+     * @link http://php.net/manual/en/sessionhandlerinterface.gc.php
      *
-     * @param int $lifetime (sec.)
+     * @param int $maxlifetime
+     * Sessions that have not updated for
+     * the last maxlifetime seconds will be removed.
      *
      * @return bool
-     * @see \SessionHandlerInterface::gc()
+     * The return value (usually TRUE on success, FALSE on failure).
+     * @since 5.4.0
      */
-    public function gc($lifetime = 1440)
+    public function gc($maxlifetime)
     {
         return $this->pdo->prepare("DELETE FROM {$this->sessionsTableName} WHERE (modified + INTERVAL lifetime SECOND) < NOW()")
                          ->execute();
     }
 
     /**
-     * Not important for database save handler.
-     * @codeCoverageIgnore
+     * Initialize session
+     * @link http://php.net/manual/en/sessionhandlerinterface.open.php
      *
-     * @param string $save_path
-     * @param string $session_id
+     * @param string $save_path The path where to store/retrieve the session.
+     * @param string $session_name The session name.
      *
      * @return bool
+     * The return value (usually TRUE on success, FALSE on failure).
+     * @since 5.4.0
+     * @codeCoverageIgnore
      */
-    public function open($save_path, $session_id)
+    public function open($save_path, $session_name)
     {
         return true;
     }
 
     /**
-     * Not important for database save handler.
-     * @codeCoverageIgnore
+     * Close the session
+     * @link http://php.net/manual/en/sessionhandlerinterface.close.php
      * @return bool
+     * The return value (usually TRUE on success, FALSE on failure).
+     * @since 5.4.0
+     * @codeCoverageIgnore
      */
     public function close()
     {
         return true;
+    }
+
+    /**
+     * Generate a keyed hash value using the HMAC method
+     * @link http://php.net/manual/en/function.hash-hmac.php
+     * Key used is session_id.
+     *
+     * @param string $data Message to be hashed.
+     *
+     * @return string (binary)
+     */
+    protected function hmac($data)
+    {
+        return hash_hmac(self::HASH_ALGORITHM, $data, session_id(), true);
     }
 }
