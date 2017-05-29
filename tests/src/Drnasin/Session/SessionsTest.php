@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionsTest.php                                                         *
- * Last Modified: 29.5.2017 19:28                                                 *
+ * Last Modified: 29.5.2017 22:00                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -49,7 +49,9 @@ class SessionsTest extends TestCase
      * @var string
      */
     protected $encryptionKey;
-
+    /**
+     * @var string
+     */
     protected $sessionId;
 
     /**
@@ -59,15 +61,17 @@ class SessionsTest extends TestCase
      */
     public function setUp()
     {
-        $dsn = sprintf($GLOBALS['DB_DSN'], $GLOBALS['DB_HOST'], $GLOBALS['DB_NAME'], $GLOBALS['DB_PORT'], $GLOBALS['DB_CHARSET']);
+        $dsn = sprintf($GLOBALS['DB_DSN'], $GLOBALS['DB_HOST'], $GLOBALS['DB_NAME'], $GLOBALS['DB_PORT'],
+            $GLOBALS['DB_CHARSET']);
         $this->pdo = new \PDO($dsn, $GLOBALS['DB_USER'], $GLOBALS['DB_PASS']);
         $this->encryptionKey = trim(file_get_contents($GLOBALS['TEST_ENCRYPTION_KEY_FILE']));
         $this->handler = new SessionHandler($this->pdo, $GLOBALS['DB_TABLENAME'], $this->encryptionKey);
 
-        if(!session_set_save_handler($this->handler, true)) {
-            throw new \Exception('session handler for testing not set!');
+        if (!session_set_save_handler($this->handler, true)) {
+            throw new \Exception(sprintf('session handler for testing could not be set in %s!', __METHOD__));
         }
 
+        // we need to have the "same" session id
         $this->sessionId = md5('test');
         session_id($this->sessionId);
         $this->assertTrue(session_start());
@@ -82,9 +86,11 @@ class SessionsTest extends TestCase
     }
 
     /**
+     * Run in separate process means only setUp + testFunc are executed
      * @runInSeparateProcess
      */
-    public function testSessionExists() {
+    public function testSessionExists()
+    {
         $this->assertEquals($this->sessionId, session_id());
         $this->assertTrue(isset($_SESSION['testSession']));
         $this->assertEquals('testData', $_SESSION['testSession']);
@@ -93,7 +99,8 @@ class SessionsTest extends TestCase
     /**
      * @runInSeparateProcess
      */
-    public function testSessionChangeValue() {
+    public function testSessionChangeValue()
+    {
         $this->assertTrue(isset($_SESSION['testSession']));
         $this->assertEquals('testData', $_SESSION['testSession']);
 
@@ -105,7 +112,8 @@ class SessionsTest extends TestCase
     /**
      * @runInSeparateProcess
      */
-    public function testSessionValUnset() {
+    public function testSessionValUnset()
+    {
         $this->assertEquals($this->sessionId, session_id());
         $this->assertTrue(isset($_SESSION['testSession']));
         $sessionData = $this->handler->read($this->sessionId);
@@ -117,22 +125,25 @@ class SessionsTest extends TestCase
     /**
      * @runInSeparateProcess
      */
-    public function testSessionEncode() {
+    public function testSessionEncode()
+    {
         $this->assertEquals(session_encode(), $this->handler->read($this->sessionId));
     }
 
     /**
      * @runInSeparateProcess
      */
-    public function testObjectInSession() {
+    public function testObjectInSession()
+    {
         $this->assertTrue(is_object($_SESSION['testSessionObject']));
-        $this->assertEquals($_SESSION['testSessionObject']->hash,  md5(__NAMESPACE__));
+        $this->assertEquals($_SESSION['testSessionObject']->hash, md5(__NAMESPACE__));
     }
 
     /**
      * @runInSeparateProcess
      */
-    public function testDestroySession() {
+    public function testDestroySession()
+    {
         $this->assertTrue(isset($_SESSION['testSession']));
         $this->assertTrue(isset($_SESSION['testSessionObject']));
         $this->assertNotEmpty($this->handler->read($this->sessionId));
@@ -145,5 +156,4 @@ class SessionsTest extends TestCase
         $this->assertFalse(isset($_SESSION['testSession']));
         $this->assertFalse(isset($_SESSION['testSessionObject']));
     }
-
 }

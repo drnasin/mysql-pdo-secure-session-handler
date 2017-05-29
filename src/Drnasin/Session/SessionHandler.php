@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandler.php                                                       *
- * Last Modified: 29.5.2017 21:16                                                 *
+ * Last Modified: 29.5.2017 22:05                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -183,8 +183,9 @@ class SessionHandler implements \SessionHandlerInterface
      */
     protected function encrypt($rawPlaintextData, $iv)
     {
-        // calculate the "integrity" hmac
-        $integrityHashHmac = hash_hmac(self::HASH_ALGORITHM, $iv . $rawPlaintextData, session_id(), true);
+        // calculate the "integrity" hmac, use hashed session id as key
+        $hashedSessionID = hash(self::HASH_ALGORITHM, session_id(), true);
+        $integrityHashHmac = hash_hmac(self::HASH_ALGORITHM, $iv . $rawPlaintextData, $hashedSessionID, true);
 
         // hash the encryption key
         $hashedEncryptionKey = hash(self::HASH_ALGORITHM, $this->encryptionKey, true);
@@ -258,6 +259,7 @@ class SessionHandler implements \SessionHandlerInterface
         // extract IV hmac from checksum block and compare it to the hmac of $iv coming from the database
         $extractedIvHmac = substr($encryptedData, 0, self::HASH_HMAC_LENGTH);
         $calculatedIvHmac = hash_hmac(self::HASH_ALGORITHM, $iv, session_id(), true);
+
         if (!hash_equals($extractedIvHmac, $calculatedIvHmac)) {
             throw new \Exception(sprintf('IV hmac check failed in %s', __METHOD__));
         }
@@ -282,7 +284,8 @@ class SessionHandler implements \SessionHandlerInterface
         }
 
         // calculate integrity hmac and compare with extracted
-        $calculatedIntegrityHmac = hash_hmac(self::HASH_ALGORITHM, $iv . $decryptedData, session_id(), true);
+        $sessionIdHash = hash(self::HASH_ALGORITHM, session_id(), true);
+        $calculatedIntegrityHmac = hash_hmac(self::HASH_ALGORITHM, $iv . $decryptedData, $sessionIdHash, true);
         if (!hash_equals($extractedIntegrityHmac, $calculatedIntegrityHmac)) {
             throw new \Exception('data hash hmac mismatch.');
         }
@@ -353,21 +356,5 @@ class SessionHandler implements \SessionHandlerInterface
     public function close()
     {
         return true;
-    }
-
-    /**
-     * Generate a keyed hash value using the HMAC method
-     * @link http://php.net/manual/en/function.hash-hmac.php
-     * Key used is session_id.
-     * Method used is self::HASH_ALGORITHM
-     *
-     * @param string $data Message to be hashed.
-     *
-     * @return string (binary)
-     * @see SessionHandler::HASH_ALGORITHM
-     */
-    protected function hmac($data)
-    {
-        return hash_hmac(self::HASH_ALGORITHM, $data, session_id(), true);
     }
 }
