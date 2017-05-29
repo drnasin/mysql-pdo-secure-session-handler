@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandler.php                                                       *
- * Last Modified: 29.5.2017 22:05                                                 *
+ * Last Modified: 29.5.2017 22:42                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -175,27 +175,26 @@ class SessionHandler implements \SessionHandlerInterface
      * Encrypts the data with given cipher.
      * Prepends the chekcsum block of hashes.
      *
-     * @param $rawPlaintextData
+     * @param $plaintext
      * @param $iv string binary initialisation vector
      *
-     * @return string (raw binary data) format: $encryptedDataHash . $ivHash . $encryptedData
+     * @return string (raw binary data) format: $ivHmac . $encryptedData . $integrityHashHmac;
      * @throws \Exception
      */
-    protected function encrypt($rawPlaintextData, $iv)
+    protected function encrypt($plaintext, $iv)
     {
-        // calculate the "integrity" hmac, use hashed session id as key
-        $hashedSessionID = hash(self::HASH_ALGORITHM, session_id(), true);
-        $integrityHashHmac = hash_hmac(self::HASH_ALGORITHM, $iv . $rawPlaintextData, $hashedSessionID, true);
+        // calculate the "integrity" hmac, use hashed encryption key, but hash it using ripemd160
+        $ripemd160hashedEncryptionKey = hash('ripemd160', $this->encryptionKey, true);
+        $integrityHashHmac = hash_hmac(self::HASH_ALGORITHM, $iv . $plaintext, $ripemd160hashedEncryptionKey, true);
 
         // hash the encryption key
         $hashedEncryptionKey = hash(self::HASH_ALGORITHM, $this->encryptionKey, true);
 
         // encrypt the raw data
-        $encryptedData = openssl_encrypt($rawPlaintextData, self::CIPHER_MODE, $hashedEncryptionKey, OPENSSL_RAW_DATA,
-            $iv);
-        unset($rawPlaintextData); // cleaning
+        $ciphertext = openssl_encrypt($plaintext, self::CIPHER_MODE, $hashedEncryptionKey, OPENSSL_RAW_DATA, $iv);
+        unset($plaintext); // cleaning
 
-        if (false === $encryptedData) {
+        if (false === $ciphertext) {
             throw new \Exception(sprintf('data encryption failed in %s. error: %s', __METHOD__,
                 openssl_error_string()));
         }
@@ -203,7 +202,7 @@ class SessionHandler implements \SessionHandlerInterface
         // calculate hmac of IV
         $ivHmac = hash_hmac(self::HASH_ALGORITHM, $iv, session_id(), true);
 
-        return $ivHmac . $encryptedData . $integrityHashHmac;
+        return $ivHmac . $ciphertext . $integrityHashHmac;
     }
 
     /**
@@ -243,21 +242,21 @@ class SessionHandler implements \SessionHandlerInterface
      * re-calculates every hash and compares with data from checksum,
      * if everything goes well returns decrypted data.
      *
-     * @param string $encryptedData raw string
+     * @param string $ciphertext raw string
      * @param string $iv in binary form
      *
      * @return string decrypted data
      * @throws \Exception
      */
-    protected function decrypt($encryptedData, $iv)
+    protected function decrypt($ciphertext, $iv)
     {
         // integrity check
-        if (strlen($encryptedData) < self::IV_LENGTH) {
+        if (strlen($ciphertext) < self::IV_LENGTH) {
             throw new \Exception(sprintf('data integrity check failed in %s', __METHOD__));
         }
 
         // extract IV hmac from checksum block and compare it to the hmac of $iv coming from the database
-        $extractedIvHmac = substr($encryptedData, 0, self::HASH_HMAC_LENGTH);
+        $extractedIvHmac = substr($ciphertext, 0, self::HASH_HMAC_LENGTH);
         $calculatedIvHmac = hash_hmac(self::HASH_ALGORITHM, $iv, session_id(), true);
 
         if (!hash_equals($extractedIvHmac, $calculatedIvHmac)) {
@@ -265,10 +264,10 @@ class SessionHandler implements \SessionHandlerInterface
         }
 
         // extract integrity hash hmac checksum block from the end of the received data
-        $extractedIntegrityHmac = substr($encryptedData, -self::HASH_HMAC_LENGTH);
+        $extractedIntegrityHmac = substr($ciphertext, -self::HASH_HMAC_LENGTH);
 
         // extract the encrypted data
-        $extractedEncryptedData = substr($encryptedData, self::HASH_HMAC_LENGTH, -self::HASH_HMAC_LENGTH);
+        $extractedEncryptedData = substr($ciphertext, self::HASH_HMAC_LENGTH, -self::HASH_HMAC_LENGTH);
         unset($data); // cleaning
 
         // hash the encryption key before decryption
@@ -284,8 +283,9 @@ class SessionHandler implements \SessionHandlerInterface
         }
 
         // calculate integrity hmac and compare with extracted
-        $sessionIdHash = hash(self::HASH_ALGORITHM, session_id(), true);
-        $calculatedIntegrityHmac = hash_hmac(self::HASH_ALGORITHM, $iv . $decryptedData, $sessionIdHash, true);
+        $ripemd160hashedEncryptionKey = hash('ripemd160', $this->encryptionKey, true);
+        $calculatedIntegrityHmac = hash_hmac(self::HASH_ALGORITHM, $iv . $decryptedData, $ripemd160hashedEncryptionKey,
+            true);
         if (!hash_equals($extractedIntegrityHmac, $calculatedIntegrityHmac)) {
             throw new \Exception('data hash hmac mismatch.');
         }
