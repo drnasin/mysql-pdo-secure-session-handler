@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandler.php                                                       *
- * Last Modified: 29.5.2017 20:10                                                 *
+ * Last Modified: 29.5.2017 21:08                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -59,15 +59,10 @@ class SessionHandler implements \SessionHandlerInterface
      */
     const IV_LENGTH = 16;
     /**
-     * Length of one header block
+     * Length of integrity HMAC hash
      * @var int
      */
-    const INTEGRITY_HMAC_LENGTH = 32;
-    /**
-     * Length of one header block
-     * @var int
-     */
-    const IV_HMAC_LENGTH = 32;
+    const HASH_HMAC_LENGTH = 32;
     /**
      * Database connection.
      * @var \PDO
@@ -121,21 +116,24 @@ class SessionHandler implements \SessionHandlerInterface
         }
 
         $this->encryptionKey = $encryptionKey;
+
+        // not needed but just in case
+        if (self::IV_LENGTH !== openssl_cipher_iv_length(self::CIPHER_MODE)) {
+            throw new \Exception(sprintf("IV length for cipher mode %s should be %s. received %s", self::CIPHER_MODE,
+                openssl_cipher_iv_length(self::CIPHER_MODE), self::IV_LENGTH));
+        }
     }
 
     /**
-     * Workflow: Generate initalisation vector for the current session, encrypt the data using encryption key and
-     * generated IV, write the session to database. Default session lifetime (usually defaults to 1440) is taken from
-     * php.ini -> session.gc_maxlifetime.
+     * Workflow: Generate IV for the current session, encrypt the data using encryption key and
+     * generated IV, write the session to database. Default session lifetime (usually defaults to 1440)
+     * is taken directly from php.ini -> session.gc_maxlifetime.
      * @link http://php.net/manual/en/sessionhandlerinterface.write.php
      *
      * @param string $session_id The session id.
      * @param string $session_data
-     * The encoded session data. This data is the
-     * result of the PHP internally encoding
-     * the $_SESSION superglobal to a serialized
-     * string and passing it as this parameter.
-     * Please note sessions use an alternative serialization method.
+     * The encoded session data.
+     * Please note sessions use an alternative serialization method (see php.ini)
      *
      * @return bool The return value (usually TRUE on success, FALSE on failure).
      * @throws \Exception
@@ -258,17 +256,17 @@ class SessionHandler implements \SessionHandlerInterface
         }
 
         // extract IV hmac from checksum block and compare it to the hmac of $iv coming from the database
-        $extractedIvHmac = substr($encryptedData, 0, self::IV_HMAC_LENGTH);
+        $extractedIvHmac = substr($encryptedData, 0, self::HASH_HMAC_LENGTH);
         $calculatedIvHmac = hash_hmac(self::HASH_ALGORITHM, $iv, session_id(), true);
         if (!hash_equals($extractedIvHmac, $calculatedIvHmac)) {
             throw new \Exception(sprintf('IV hmac check failed in %s', __METHOD__));
         }
 
         // extract integrity hash hmac checksum block from the end of the received data
-        $extractedIntegrityHmac = substr($encryptedData, -self::INTEGRITY_HMAC_LENGTH);
+        $extractedIntegrityHmac = substr($encryptedData, -self::HASH_HMAC_LENGTH);
 
         // extract the encrypted data
-        $extractedEncryptedData = substr($encryptedData, self::IV_HMAC_LENGTH, -self::INTEGRITY_HMAC_LENGTH);
+        $extractedEncryptedData = substr($encryptedData, self::HASH_HMAC_LENGTH, -self::HASH_HMAC_LENGTH);
         unset($data); // cleaning
 
         // hash the encryption key before decryption

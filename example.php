@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: example.php                                                              *
- * Last Modified: 29.5.2017 20:56                                                 *
+ * Last Modified: 29.5.2017 21:13                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -65,13 +65,13 @@ $createdSessionIds = [];
 for ($i = 1; $i <= 10; $i++) {
     // generate session id
     $sessionId = session_create_id();
-    // set our id as session id
+    // set our created session id as session id of next created session
     session_id($sessionId);
-    //now start the session
+    //now start/create the session withour id
     session_start();
     //access the session via superglobal and set value of key 'someKey'
     $_SESSION['someKey'] = sprintf("Setting initial value of var '%s' in session %s", 'someKey', $sessionId);
-    //"write to session and close it" (not destroy!) because in the next iteration we are again opening a new session
+    // explicitly call session_write_close() (not destroy!) because in the next iteration we are again opening a new session
     session_write_close();
 
     //store opened sessionId and move on
