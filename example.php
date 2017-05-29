@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: example.php                                                              *
- * Last Modified: 27.5.2017 18:20                                                 *
+ * Last Modified: 29.5.2017 8:31                                                  *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -41,7 +41,7 @@ $dbSettings = [
     'charset'  => 'utf8',
 ];
 
-$sessionTableName = 'sessions';
+$sessionTableName = 'sessions_test';
 
 /**
  * Encryption key.
@@ -58,23 +58,36 @@ $handler = new \Drnasin\Session\SessionHandler(
     $encryptionKey
 );
 session_set_save_handler($handler, true);
-session_start();
 
-$id = bin2hex(openssl_random_pseudo_bytes(32));
-//generate 50 random sessions
-for($i = 1; $i <= 50; $i++) {
-    $_SESSION["session_{$i}"]['test'] = bin2hex(openssl_random_pseudo_bytes(32));
-}
-$_SESSION["session_5"]['test'] = 'test';
-//should print 50
-echo count($_SESSION), PHP_EOL;
+// we need output buffering because we will use session_start() many time
+ob_start();
+$generatedSessions = [];
+//open 10 sessions and assign values to the SAME variable in every session
+for($i = 1; $i <= 10; $i++) {
+    $sessionId = bin2hex(openssl_random_pseudo_bytes(16));
+    session_id($sessionId);
+    session_start();
+    $_SESSION["someKey"] = sprintf("I'm the original value of key '%s' in session %s", 'someKey', $sessionId);
+    session_write_close();
 
-//should print 'test'
-echo $_SESSION['session_5']['test'], PHP_EOL;
-
-$_SESSION['testSession'] = hash('sha256', $_SESSION["session_5"]['test']);
-
-if($_SESSION['testSession'] === hash('sha256', 'test')) {
-    print("working!");
+    $generatedSessions[] = $sessionId;
 }
 
+foreach ($generatedSessions as $openedSession) {
+    session_id($openedSession);
+    session_start();
+    echo $_SESSION["someKey"], PHP_EOL;
+    $_SESSION["someKey"] = sprintf("I'm the updated value of key '%s' in session %s", 'someKey', $openedSession);
+    echo $_SESSION["someKey"], PHP_EOL;
+    session_write_close();
+}
+
+
+//destroy all sessions
+foreach ($generatedSessions as $openedSession) {
+    session_id($openedSession);
+    session_start();
+    session_destroy();
+}
+
+ob_end_flush();

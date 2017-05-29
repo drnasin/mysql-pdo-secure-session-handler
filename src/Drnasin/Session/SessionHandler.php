@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandler.php                                                       *
- * Last Modified: 27.5.2017 18:18                                                 *
+ * Last Modified: 27.5.2017 22:45                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -67,7 +67,7 @@ class SessionHandler implements \SessionHandlerInterface
      * header consists of hash(encryptedData)+hash(authString)+hash(iv)
      * @var int
      */
-    const CHECKSUM_HEADER_LENTGH = 96; //32*3
+    const CHECKSUM_HEADER_LENTGH = self::CHECKUM_BLOCK_LENGTH * 2; //32*2
     /**
      * Database connection.
      * @var \PDO
@@ -92,11 +92,6 @@ class SessionHandler implements \SessionHandlerInterface
      * @var string
      */
     protected $hashedEncryptionKey;
-    /**
-     * Used in enc/dec process
-     * @var string
-     */
-    private $authString = 'Drnasin|SessionHandler|1.5.0';
 
     /**
      * SessionHandler constructor.
@@ -195,9 +190,8 @@ class SessionHandler implements \SessionHandlerInterface
 
         $encryptedDataHash = $this->hash($encryptedData);
         $ivHash = $this->hash($iv);
-        $authStringHash = $this->hash($this->authString);
 
-        return $encryptedDataHash . $authStringHash . $ivHash . $encryptedData;
+        return $encryptedDataHash . $ivHash . $encryptedData;
     }
 
     /**
@@ -251,12 +245,13 @@ class SessionHandler implements \SessionHandlerInterface
      */
     protected function decrypt($data, $iv)
     {
-
         // integrity check
         if (strlen($data) < self::IV_LENGTH) {
             throw new \Exception(sprintf('data integrity check failed in %s', strlen($data), self::IV_LENGTH,
                 __METHOD__));
         }
+
+        $hashedEncryptionKey = $this->hash($this->encryptionKey);
 
         // extract check header
         $checksum = substr($data, 0, self::CHECKSUM_HEADER_LENTGH);
@@ -264,11 +259,8 @@ class SessionHandler implements \SessionHandlerInterface
         // extract Data hash
         $extractedDataHash = substr($checksum, 0, self::CHECKUM_BLOCK_LENGTH);
 
-        // extract Auth string hash
-        $extractedAuthStringHash = substr($checksum, self::CHECKUM_BLOCK_LENGTH, self::CHECKUM_BLOCK_LENGTH);
-
         // extract IV hash
-        $extractedIvHash = substr($checksum, self::CHECKUM_BLOCK_LENGTH * 2, self::CHECKUM_BLOCK_LENGTH);
+        $extractedIvHash = substr($checksum, self::CHECKUM_BLOCK_LENGTH, self::CHECKUM_BLOCK_LENGTH);
 
         // rest is encrypted data
         $encryptedData = substr($data, self::CHECKSUM_HEADER_LENTGH);
@@ -278,15 +270,10 @@ class SessionHandler implements \SessionHandlerInterface
             throw new \Exception(sprintf('data hash check failed in %s', __METHOD__));
         }
 
-        if (!hash_equals($extractedAuthStringHash, $this->hash($this->authString))) {
-            throw new \Exception(sprintf('auth hash check failed in %s', __METHOD__));
-        }
-
         if (!hash_equals($extractedIvHash, $this->hash($iv))) {
             throw new \Exception(sprintf('IV hash check failed in %s', __METHOD__));
         }
 
-        $hashedEncryptionKey = $this->hash($this->encryptionKey);
         $decryptedData = openssl_decrypt($encryptedData, self::CIPHER_MODE, $hashedEncryptionKey,
             OPENSSL_RAW_DATA, $iv);
 
