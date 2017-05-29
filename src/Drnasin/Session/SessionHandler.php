@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandler.php                                                       *
- * Last Modified: 29.5.2017 20:07                                                 *
+ * Last Modified: 29.5.2017 20:10                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -62,16 +62,12 @@ class SessionHandler implements \SessionHandlerInterface
      * Length of one header block
      * @var int
      */
-    const HMAC_HASH_LENGTH = 32;
+    const INTEGRITY_HMAC_LENGTH = 32;
     /**
      * Length of one header block
      * @var int
      */
     const IV_HMAC_LENGTH = 32;
-    /**
-     *
-     */
-    const AUTH_BLOCK_LENGTH = 3;
     /**
      * Database connection.
      * @var \PDO
@@ -269,10 +265,10 @@ class SessionHandler implements \SessionHandlerInterface
         }
 
         // extract integrity hash hmac checksum block from the end of the received data
-        $extractedIntegrityHmac = substr($encryptedData, -self::HMAC_HASH_LENGTH);
+        $extractedIntegrityHmac = substr($encryptedData, -self::INTEGRITY_HMAC_LENGTH);
 
         // extract the encrypted data
-        $extractedEncryptedData = substr($encryptedData, self::IV_HMAC_LENGTH, -self::HMAC_HASH_LENGTH);
+        $extractedEncryptedData = substr($encryptedData, self::IV_HMAC_LENGTH, -self::INTEGRITY_HMAC_LENGTH);
         unset($data); // cleaning
 
         // hash the encryption key before decryption
@@ -287,7 +283,7 @@ class SessionHandler implements \SessionHandlerInterface
                 openssl_error_string()));
         }
 
-        // calculate integrity hmac and check
+        // calculate integrity hmac and compare with extracted
         $calculatedIntegrityHmac = hash_hmac(self::HASH_ALGORITHM, $iv . $decryptedData, session_id(), true);
         if (!hash_equals($extractedIntegrityHmac, $calculatedIntegrityHmac)) {
             throw new \Exception('data hash hmac mismatch.');

@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: example.php                                                              *
- * Last Modified: 29.5.2017 19:44                                                 *
+ * Last Modified: 29.5.2017 20:56                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -60,17 +60,18 @@ session_set_save_handler($handler, true);
 // we need output buffering because we will use session_start() many time
 ob_start();
 $createdSessionIds = [];
+
 //open 10 sessions and assign values to the SAME variable in every session
 for ($i = 1; $i <= 10; $i++) {
     // generate session id
-    $sessionId = bin2hex(openssl_random_pseudo_bytes(16));
+    $sessionId = session_create_id();
     // set our id as session id
     session_id($sessionId);
     //now start the session
     session_start();
-    //access via superglobal, set value os key 'someKey'
-    $_SESSION["someKey"] = sprintf("Setting initial value of var '%s' in session %s", 'someKey', $sessionId);
-    //"write to session and close it" (not destroy!) because in the next iteration we are again opening new session
+    //access the session via superglobal and set value of key 'someKey'
+    $_SESSION['someKey'] = sprintf("Setting initial value of var '%s' in session %s", 'someKey', $sessionId);
+    //"write to session and close it" (not destroy!) because in the next iteration we are again opening a new session
     session_write_close();
 
     //store opened sessionId and move on
@@ -93,8 +94,9 @@ foreach ($createdSessionIds as $createdSessionId) {
 
 //destroy all created sessions
 foreach ($createdSessionIds as $createdSessionId) {
-    // re-open session
+    // set session id
     session_id($createdSessionId);
+    // re-open the session
     session_start();
     //destroy it (delete)
     if (session_destroy()) {
@@ -102,4 +104,5 @@ foreach ($createdSessionIds as $createdSessionId) {
     }
 }
 
+// flush the buffer
 ob_end_flush();
