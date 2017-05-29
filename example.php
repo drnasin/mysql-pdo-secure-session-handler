@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: example.php                                                              *
- * Last Modified: 29.5.2017 21:13                                                 *
+ * Last Modified: 30.5.2017 0:04                                                  *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -93,16 +93,16 @@ foreach ($createdSessionIds as $createdSessionId) {
 }
 
 //destroy all created sessions
-foreach ($createdSessionIds as $createdSessionId) {
-    // set session id
-    session_id($createdSessionId);
-    // re-open the session
-    session_start();
-    //destroy it (delete)
-    if (session_destroy()) {
-        echo "Session ", $createdSessionId, " destroyed.", PHP_EOL;
-    }
-}
+//foreach ($createdSessionIds as $createdSessionId) {
+//    // set session id
+//    session_id($createdSessionId);
+//    // re-open the session
+//    session_start();
+//    //destroy it (delete)
+//    if (session_destroy()) {
+//        echo "Session ", $createdSessionId, " destroyed.", PHP_EOL;
+//    }
+//}
 
 // flush the buffer
 ob_end_flush();

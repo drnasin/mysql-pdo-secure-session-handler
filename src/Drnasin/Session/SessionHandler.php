@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandler.php                                                       *
- * Last Modified: 29.5.2017 22:42                                                 *
+ * Last Modified: 30.5.2017 0:15                                                  *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -81,6 +81,14 @@ class SessionHandler implements \SessionHandlerInterface
      * @var string
      */
     protected $encryptionKey;
+    /**
+     * @var string
+     */
+    protected $hashedEncryptionKey;
+    /**
+     * @var string
+     */
+    protected $hashedEncryptionSubKey;
 
     /**
      * SessionHandler constructor.
@@ -116,6 +124,10 @@ class SessionHandler implements \SessionHandlerInterface
         }
 
         $this->encryptionKey = $encryptionKey;
+        // needed for encryption/decryption of plaintext data
+        $this->hashedEncryptionKey = hash(self::HASH_ALGORITHM, $encryptionKey, true);
+        // used as a key for integrity hmac hash calculation
+        $this->hashedEncryptionSubKey = hash('ripemd160', $encryptionKey, true);
 
         // not needed but just in case
         if (self::IV_LENGTH !== openssl_cipher_iv_length(self::CIPHER_MODE)) {
@@ -156,7 +168,7 @@ class SessionHandler implements \SessionHandlerInterface
                 self::CIPHER_MODE));
         }
 
-        // encrypt the data and immediately encode it so we can store it to database
+        // encrypt the data and immediately encode it so we can store it to the database
         $encodedEncryptedData = base64_encode($this->encrypt($session_data, $iv));
         unset($session_data); // cleaning
 
@@ -178,20 +190,18 @@ class SessionHandler implements \SessionHandlerInterface
      * @param $plaintext
      * @param $iv string binary initialisation vector
      *
-     * @return string (raw binary data) format: $ivHmac . $encryptedData . $integrityHashHmac;
+     * @return string (raw binary data)
+     *         format: rightPartOfIntegrityHmac . ciphertext . leftPartOfIntegrityHmac;
      * @throws \Exception
      */
     protected function encrypt($plaintext, $iv)
     {
         // calculate the "integrity" hmac, use hashed encryption key, but hash it using ripemd160
-        $ripemd160hashedEncryptionKey = hash('ripemd160', $this->encryptionKey, true);
-        $integrityHashHmac = hash_hmac(self::HASH_ALGORITHM, $iv . $plaintext, $ripemd160hashedEncryptionKey, true);
-
-        // hash the encryption key
-        $hashedEncryptionKey = hash(self::HASH_ALGORITHM, $this->encryptionKey, true);
+        $integrityHashHmac = hash_hmac(self::HASH_ALGORITHM, $iv . $plaintext, $this->hashedEncryptionSubKey, true);
 
         // encrypt the raw data
-        $ciphertext = openssl_encrypt($plaintext, self::CIPHER_MODE, $hashedEncryptionKey, OPENSSL_RAW_DATA, $iv);
+        $ciphertext = openssl_encrypt($plaintext, self::CIPHER_MODE, $this->hashedEncryptionKey, OPENSSL_RAW_DATA, $iv);
+
         unset($plaintext); // cleaning
 
         if (false === $ciphertext) {
@@ -199,10 +209,11 @@ class SessionHandler implements \SessionHandlerInterface
                 openssl_error_string()));
         }
 
-        // calculate hmac of IV
-        $ivHmac = hash_hmac(self::HASH_ALGORITHM, $iv, session_id(), true);
+        // break the integrity hmac in hallf and glue ciphertext in betwean R and L
+        $left = substr($integrityHashHmac, 0, self::HASH_HMAC_LENGTH / 2);
+        $right = substr($integrityHashHmac, self::HASH_HMAC_LENGTH / 2);
 
-        return $ivHmac . $ciphertext . $integrityHashHmac;
+        return $right . $ciphertext . $left;
     }
 
     /**
@@ -255,42 +266,31 @@ class SessionHandler implements \SessionHandlerInterface
             throw new \Exception(sprintf('data integrity check failed in %s', __METHOD__));
         }
 
-        // extract IV hmac from checksum block and compare it to the hmac of $iv coming from the database
-        $extractedIvHmac = substr($ciphertext, 0, self::HASH_HMAC_LENGTH);
-        $calculatedIvHmac = hash_hmac(self::HASH_ALGORITHM, $iv, session_id(), true);
+        // extract left and right side, glue them together to get Integrity hmac
+        $right = substr($ciphertext, 0, self::HASH_HMAC_LENGTH / 2);
+        $left = substr($ciphertext, -(self::HASH_HMAC_LENGTH / 2));
 
-        if (!hash_equals($extractedIvHmac, $calculatedIvHmac)) {
-            throw new \Exception(sprintf('IV hmac check failed in %s', __METHOD__));
-        }
-
-        // extract integrity hash hmac checksum block from the end of the received data
-        $extractedIntegrityHmac = substr($ciphertext, -self::HASH_HMAC_LENGTH);
-
-        // extract the encrypted data
-        $extractedEncryptedData = substr($ciphertext, self::HASH_HMAC_LENGTH, -self::HASH_HMAC_LENGTH);
-        unset($data); // cleaning
-
-        // hash the encryption key before decryption
-        $hashedEncryptionKey = hash(self::HASH_ALGORITHM, $this->encryptionKey, true);
+        // everything else in betwean is the real ciphertext
+        $ciphertext = substr($ciphertext, self::HASH_HMAC_LENGTH / 2, -(self::HASH_HMAC_LENGTH / 2));
 
         // decrypt the data
-        $decryptedData = openssl_decrypt($extractedEncryptedData, self::CIPHER_MODE, $hashedEncryptionKey,
-            OPENSSL_RAW_DATA, $iv);
+        $plaintext = openssl_decrypt($ciphertext, self::CIPHER_MODE, $this->hashedEncryptionKey, OPENSSL_RAW_DATA, $iv);
+        unset($ciphertext); // cleaning
 
-        if (false === $decryptedData) {
+        if (false === $plaintext) {
             throw new \Exception(sprintf('data decryption failed in %s. error: %s', __METHOD__,
                 openssl_error_string()));
         }
 
+        $extractedIntegrityHmac = $left . $right;
         // calculate integrity hmac and compare with extracted
-        $ripemd160hashedEncryptionKey = hash('ripemd160', $this->encryptionKey, true);
-        $calculatedIntegrityHmac = hash_hmac(self::HASH_ALGORITHM, $iv . $decryptedData, $ripemd160hashedEncryptionKey,
+        $calculatedIntegrityHmac = hash_hmac(self::HASH_ALGORITHM, $iv . $plaintext, $this->hashedEncryptionSubKey,
             true);
         if (!hash_equals($extractedIntegrityHmac, $calculatedIntegrityHmac)) {
             throw new \Exception('data hash hmac mismatch.');
         }
 
-        return $decryptedData;
+        return $plaintext;
     }
 
     /**
