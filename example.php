@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: example.php                                                              *
- * Last Modified: 29.5.2017 19:41                                                 *
+ * Last Modified: 29.5.2017 19:44                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -30,18 +30,22 @@
  * THE SOFTWARE.                                                                  *
  **********************************************************************************/
 
-include_once './vendor/autoload.php';
+include_once __DIR__ . '/vendor/autoload.php';
 
 $dbSettings = [
     'host'     => '127.0.0.1',
     'port'     => '3306',
     'name'     => 'sessions',
+    'table'    => 'sessions_test',
     'username' => 'root',
     'password' => '',
     'charset'  => 'utf8',
 ];
+// set up PDO
+$dsn = sprintf('mysql:host=%s;dbname=%s;port=%d;charset=%s', $dbSettings['host'], $dbSettings['name'],
+    $dbSettings['port'], $dbSettings['charset']);
 
-$sessionTableName = 'sessions_test';
+$pdo = new \PDO($dsn, $dbSettings['username'], $dbSettings['password']);
 
 /**
  * Encryption key.
@@ -49,12 +53,7 @@ $sessionTableName = 'sessions_test';
  */
 $encryptionKey = trim(file_get_contents(__DIR__ . '/tests/encryption.key'));
 
-$dsn = sprintf('mysql:host=%s;dbname=%s;port=%d;charset=%s', $dbSettings['host'], $dbSettings['name'],
-    $dbSettings['port'], $dbSettings['charset']);
-
-$pdo = new PDO($dsn, $dbSettings['username'], $dbSettings['password']);
-
-$handler = new \Drnasin\Session\SessionHandler($pdo, $sessionTableName, $encryptionKey);
+$handler = new \Drnasin\Session\SessionHandler($pdo, $dbSettings['table'], $encryptionKey);
 
 session_set_save_handler($handler, true);
 

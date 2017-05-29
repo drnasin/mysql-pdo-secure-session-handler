@@ -7,7 +7,7 @@
   ~ Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler       ~
   ~                                                                               ~
   ~ File: phpunit.xml                                                             ~
-  ~ Last Modified: 29.5.2017 15:36                                                ~
+  ~ Last Modified: 29.5.2017 19:45                                                ~
   ~                                                                               ~
   ~ The MIT License                                                               ~
   ~                                                                               ~
@@ -32,10 +32,10 @@
 <phpunit colors="true" strict="true" bootstrap="../vendor/autoload.php" beStrictAboutTestsThatDoNotTestAnything="true"
          convertErrorsToExceptions="true" convertNoticesToExceptions="true" convertWarningsToExceptions="true">
     <testsuites>
-        <testsuite name="Handler tests">
+        <testsuite name="Unit tests">
             <file>./src/Drnasin/Session/SessionHandlerTest.php</file>
         </testsuite>
-        <testsuite name="Sessions tests">
+        <testsuite name="Functional tests">
             <file>./src/Drnasin/Session/SessionsTest.php</file>
         </testsuite>
     </testsuites>
