@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionsTest.php                                                         *
- * Last Modified: 27.5.2017 22:45                                                 *
+ * Last Modified: 29.5.2017 19:28                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -133,12 +133,14 @@ class SessionsTest extends TestCase
      * @runInSeparateProcess
      */
     public function testDestroySession() {
-        session_start();
         $this->assertTrue(isset($_SESSION['testSession']));
         $this->assertTrue(isset($_SESSION['testSessionObject']));
         $this->assertNotEmpty($this->handler->read($this->sessionId));
+        session_id($this->sessionId);
+        session_start();
         $_SESSION = [];
-        session_write_close();
+        session_destroy();
+
         $this->assertEmpty($this->handler->read($this->sessionId));
         $this->assertFalse(isset($_SESSION['testSession']));
         $this->assertFalse(isset($_SESSION['testSessionObject']));
