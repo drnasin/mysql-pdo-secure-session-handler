@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandler.php                                                       *
- * Last Modified: 29.5.2017 20:05                                                 *
+ * Last Modified: 29.5.2017 20:07                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -54,7 +54,7 @@ class SessionHandler implements \SessionHandlerInterface
      */
     const CIPHER_MODE = 'AES-256-CBC';
     /**
-     * Length (in bytes) of iv
+     * Length (in bytes) of IV
      * @var int
      */
     const IV_LENGTH = 16;
@@ -129,7 +129,7 @@ class SessionHandler implements \SessionHandlerInterface
 
     /**
      * Workflow: Generate initalisation vector for the current session, encrypt the data using encryption key and
-     * generated iv, write the session to database. Default session lifetime (usually defaults to 1440) is taken from
+     * generated IV, write the session to database. Default session lifetime (usually defaults to 1440) is taken from
      * php.ini -> session.gc_maxlifetime.
      * @link http://php.net/manual/en/sessionhandlerinterface.write.php
      *
@@ -148,9 +148,9 @@ class SessionHandler implements \SessionHandlerInterface
     public function write($session_id, $session_data)
     {
         /**
-         * First generate the session initialisation vector (iv) and then
+         * First generate the session initialisation vector (IV) and then
          * use it together with hashed encryption key to encrypt the data, then write the session to the database.
-         * @important "iv" must have the same length as the cipher block size (128 bits, aka 16 bytes for AES256).
+         * @important "IV" must have the same length as the cipher block size (128 bits, aka 16 bytes for AES256).
          * @var string of (psuedo) bytes (in binary form, you need to bin2hex the data if you want hexadecimal
          * representation.
          */
@@ -158,7 +158,7 @@ class SessionHandler implements \SessionHandlerInterface
 
         // should NEVER happen for our cipher mode.
         if (!$strong) {
-            throw new \Exception(sprintf('generated iv for the cipher mode "%s" is not strong enough',
+            throw new \Exception(sprintf('generated IV for the cipher mode "%s" is not strong enough',
                 self::CIPHER_MODE));
         }
 
@@ -265,7 +265,7 @@ class SessionHandler implements \SessionHandlerInterface
         $extractedIvHmac = substr($encryptedData, 0, self::IV_HMAC_LENGTH);
         $calculatedIvHmac = hash_hmac(self::HASH_ALGORITHM, $iv, session_id(), true);
         if (!hash_equals($extractedIvHmac, $calculatedIvHmac)) {
-            throw new \Exception(sprintf('iv hmac check failed in %s', __METHOD__));
+            throw new \Exception(sprintf('IV hmac check failed in %s', __METHOD__));
         }
 
         // extract integrity hash hmac checksum block from the end of the received data
