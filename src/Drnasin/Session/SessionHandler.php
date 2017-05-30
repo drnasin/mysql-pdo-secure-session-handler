@@ -7,7 +7,7 @@
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionHandler.php                                                       *
- * Last Modified: 30.5.2017 0:15                                                  *
+ * Last Modified: 30.5.2017 18:56                                                 *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -88,7 +88,7 @@ class SessionHandler implements \SessionHandlerInterface
     /**
      * @var string
      */
-    protected $hashedEncryptionSubKey;
+    protected $authenticationKey;
 
     /**
      * SessionHandler constructor.
@@ -127,7 +127,7 @@ class SessionHandler implements \SessionHandlerInterface
         // needed for encryption/decryption of plaintext data
         $this->hashedEncryptionKey = hash(self::HASH_ALGORITHM, $encryptionKey, true);
         // used as a key for integrity hmac hash calculation
-        $this->hashedEncryptionSubKey = hash('ripemd160', $encryptionKey, true);
+        $this->authenticationKey = hash('ripemd160', $encryptionKey, true);
 
         // not needed but just in case
         if (self::IV_LENGTH !== openssl_cipher_iv_length(self::CIPHER_MODE)) {
@@ -197,7 +197,7 @@ class SessionHandler implements \SessionHandlerInterface
     protected function encrypt($plaintext, $iv)
     {
         // calculate the "integrity" hmac, use hashed encryption key, but hash it using ripemd160
-        $integrityHashHmac = hash_hmac(self::HASH_ALGORITHM, $iv . $plaintext, $this->hashedEncryptionSubKey, true);
+        $integrityHashHmac = hash_hmac(self::HASH_ALGORITHM, $iv . $plaintext, $this->authenticationKey, true);
 
         // encrypt the raw data
         $ciphertext = openssl_encrypt($plaintext, self::CIPHER_MODE, $this->hashedEncryptionKey, OPENSSL_RAW_DATA, $iv);
@@ -284,7 +284,7 @@ class SessionHandler implements \SessionHandlerInterface
 
         $extractedIntegrityHmac = $left . $right;
         // calculate integrity hmac and compare with extracted
-        $calculatedIntegrityHmac = hash_hmac(self::HASH_ALGORITHM, $iv . $plaintext, $this->hashedEncryptionSubKey,
+        $calculatedIntegrityHmac = hash_hmac(self::HASH_ALGORITHM, $iv . $plaintext, $this->authenticationKey,
             true);
         if (!hash_equals($extractedIntegrityHmac, $calculatedIntegrityHmac)) {
             throw new \Exception('data hash hmac mismatch.');
