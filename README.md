@@ -17,19 +17,19 @@ the plaintext is malleable to a certain degree.
    2. when session is being created so is the "IV" for that session. "IV "is then stored in the database as binary data
    2. lifetime of a session is kept in the database because
         - can't be tampered with that easily
-        - calculation of the sessions expiration can be left to the database (faster)\
+        - calculation of the sessions expiration can be left to the database (faster)
         (example: _DELETE FROM sessions WHERE (modified + INTERVAL lifetime SECOND) < NOW()_)
 
 ### Usage
 Generate your encryption key using:
-`openssl rand -base64 -out tests/encryption.key 180` (recommended key length is 128 - 256)
+`openssl rand -base64 -out tests/encryption.key 180` (recommended key length is 128 - 256 bits)
 then check the included example.
 
 ### Encryption
 As per cipher mode used (CBC in this case) data are encrypted using:\
-    - provided **encryption key** (which is first hash-ed using sha256, before applying) \
+    - provided **encryption key** \
     - **initialisation vector (IV)** - generated for every session as a string of (pseudo)bytes, length is in colleration with\
-                                       cipher mode used (AES = 128 bits = 16 bytes -> meaning: generated "IV" has to be 16 bytes long)
+                                       cipher mode used (AES = 256 bits = 32 bytes -> meaning: generated "IV" has to be 32 bytes long)
 
 ### Database
 .sql file (mysql dialect) is provided in *schema* dir.
