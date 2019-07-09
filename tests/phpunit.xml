@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   ~ Created by Ante Drnasin - http://www.drnasin.com                              ~
-  ~ Copyright (c) 2017. All rights reserved.                                      ~
+  ~ Copyright (c) 2019. All rights reserved.                                      ~
   ~                                                                               ~
   ~ Project Name: Session Save Handler                                            ~
   ~ Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler       ~
   ~                                                                               ~
   ~ File: phpunit.xml                                                             ~
-  ~ Last Modified: 29.5.2017 19:45                                                ~
+  ~ Last Modified: 9.7.2019 17:13                                                 ~
   ~                                                                               ~
   ~ The MIT License                                                               ~
   ~                                                                               ~
@@ -49,14 +49,14 @@
              lowUpperBound="35" highLowerBound="70"/>
     </logging>
     <php>
-        <var name="DB_DSN" value="mysql:host=%s;dbname=%s;port=%d;charset=%s"/>
-        <var name="DB_HOST" value="localhost"/>
-        <var name="DB_PORT" value="3306"/>
-        <var name="DB_USER" value="root"/>
-        <var name="DB_PASS" value=""/>
-        <var name="DB_NAME" value="sessions"/>
-        <var name="DB_TABLENAME" value="sessions_test"/>
-        <var name="DB_CHARSET" value="utf8"/>
-        <var name="TEST_ENCRYPTION_KEY_FILE" value="encryption.key"/>
+        <env name="DB_DSN" value="mysql:host=%s;dbname=%s;port=%d;charset=%s"/>
+        <env name="DB_HOST" value="localhost"/>
+        <env name="DB_PORT" value="3306"/>
+        <env name="DB_USER" value="root"/>
+        <env name="DB_PASS" value="root"/>
+        <env name="DB_NAME" value="sessions"/>
+        <env name="DB_TABLENAME" value="sessions_test"/>
+        <env name="DB_CHARSET" value="utf8"/>
+        <env name="TEST_ENCRYPTION_KEY_FILE" value="encryption.key"/>
     </php>
 </phpunit>

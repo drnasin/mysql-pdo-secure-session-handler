@@ -1,13 +1,13 @@
 <?php
 /**********************************************************************************
  * Created by Ante Drnasin - http://www.drnasin.com                               *
- * Copyright (c) 2017. All rights reserved.                                       *
+ * Copyright (c) 2019. All rights reserved.                                       *
  *                                                                                *
  * Project Name: Session Save Handler                                             *
  * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
  *                                                                                *
  * File: SessionsTest.php                                                         *
- * Last Modified: 29.5.2017 22:00                                                 *
+ * Last Modified: 9.7.2019 17:29                                                  *
  *                                                                                *
  * The MIT License                                                                *
  *                                                                                *
@@ -32,6 +32,7 @@
 
 namespace Drnasin\Session;
 
+use PDO;
 use PHPUnit\Framework\TestCase;
 
 class SessionsTest extends TestCase
@@ -59,13 +60,14 @@ class SessionsTest extends TestCase
      * php variables from phpunit.xml so it is what it is.
      * Function is called before running any tests.
      */
-    public function setUp()
+    public function setUp() : void
     {
-        $dsn = sprintf($GLOBALS['DB_DSN'], $GLOBALS['DB_HOST'], $GLOBALS['DB_NAME'], $GLOBALS['DB_PORT'],
-            $GLOBALS['DB_CHARSET']);
-        $this->pdo = new \PDO($dsn, $GLOBALS['DB_USER'], $GLOBALS['DB_PASS']);
-        $this->encryptionKey = trim(file_get_contents($GLOBALS['TEST_ENCRYPTION_KEY_FILE']));
-        $this->handler = new SessionHandler($this->pdo, $GLOBALS['DB_TABLENAME'], $this->encryptionKey);
+        $dsn = sprintf($_ENV['DB_DSN'], $_ENV['DB_HOST'], $_ENV['DB_NAME'], $_ENV['DB_PORT'],
+            $_ENV['DB_CHARSET']);
+
+        $this->pdo = new PDO($dsn, $_ENV['DB_USER'], $_ENV['DB_PASS']);
+        $this->encryptionKey = trim(file_get_contents($_ENV['TEST_ENCRYPTION_KEY_FILE']));
+        $this->handler = new SessionHandler($this->pdo, $_ENV['DB_TABLENAME'], $this->encryptionKey);
 
         if (!session_set_save_handler($this->handler, true)) {
             throw new \Exception(sprintf('session handler for testing could not be set in %s!', __METHOD__));

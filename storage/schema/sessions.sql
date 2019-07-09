@@ -17,5 +17,5 @@ CREATE TABLE `sessions_test` (
 --
 -- Indexes for table `sessions`
 --
-ALTER TABLE `sessions`
+ALTER TABLE `sessions_test`
   ADD UNIQUE KEY `session_id` (`session_id`);
