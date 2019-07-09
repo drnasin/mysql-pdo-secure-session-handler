@@ -69,17 +69,6 @@ class SessionHandlerTest extends TestCase
     }
 
     /**
-     * Constructor test.
-     */
-    public function testConstructor()
-    {
-//        depreceted in phpunit 8
-//        $this->assertAttributeEquals($this->pdo, 'pdo', $this->handler);
-//        $this->assertAttributeEquals($_ENV['DB_TABLENAME'], 'sessionsTableName', $this->handler);
-//        $this->assertAttributeEquals($this->encryptionKey, 'encryptionKey', $this->handler);
-    }
-
-    /**
      * @param $sessionId
      * @param $sessionData
      *

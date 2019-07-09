@@ -55,6 +55,3 @@ run: `composer tests`
 
 ### Code coverage
 Code coverage will be generated in tests/code-coverage-report directory.
-
-
-
