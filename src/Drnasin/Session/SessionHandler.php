@@ -83,9 +83,10 @@ readonly class SessionHandler implements SessionHandlerInterface
      * @param string $encryptionKey
      * @throws Exception
      */
-    public function __construct(protected PDO $pdo, protected string $tableName, protected string $encryptionKey) {
+    public function __construct(protected PDO $pdo, protected string $tableName, protected string $encryptionKey)
+    {
         match (true) {
-            !extension_loaded('openssl') => throw new Exception('OpenSSL extension not found'),
+            false === extension_loaded('openssl') => throw new Exception('OpenSSL extension not found'),
             empty($tableName) => throw new Exception('Sessions table name is empty'),
             empty($encryptionKey) => throw new Exception('Encryption key is empty'),
             self::IV_LENGTH !== openssl_cipher_iv_length(self::CIPHER_MODE) => throw new Exception("IV length mismatch for cipher mode " . self::CIPHER_MODE),
@@ -104,9 +105,15 @@ readonly class SessionHandler implements SessionHandlerInterface
         $this->authenticationKey = hash_hkdf(self::HASH_ALGORITHM, $encryptionKey, 32, self::AUTH_STRING, $salt);
     }
 
-    public static function create(
-        PDO $pdo, string $tableName, string $encryptionKey
-    ): self {
+    /**
+     * @param PDO $pdo
+     * @param string $tableName
+     * @param string $encryptionKey
+     * @return self
+     * @throws Exception
+     */
+    public static function create(PDO $pdo, string $tableName, string $encryptionKey): self
+    {
         if (empty($tableName)) {
             throw new InvalidArgumentException('Table name cannot be empty');
         }
@@ -124,11 +131,8 @@ readonly class SessionHandler implements SessionHandlerInterface
      * is taken directly from php.ini -> session.gc_maxlifetime.
      * @link http://php.net/manual/en/sessionhandlerinterface.write.php
      *
-     * @param string $session_id The session id.
-     * @param string $session_data
-     * The encoded session data.
-     * Please note sessions use an alternative serialization method (see php.ini)
-     *
+     * @param string $id The session id.
+     * @param string $data - The encoded session data. Please note sessions use an alternative serialization method (see php.ini)
      * @return bool The return value (usually TRUE on success, FALSE on failure).
      * @throws Exception
      * @since 5.4.0
@@ -170,9 +174,6 @@ readonly class SessionHandler implements SessionHandlerInterface
     {
         $authKey = $this->deriveAuthenticationKey();
 
-        // Calculate integrity HMAC
-        $integrityHmac = hash_hmac(self::HASH_ALGORITHM, $iv . $plaintext, $authKey, true);
-
         // Encrypt the data
         $ciphertext = openssl_encrypt($plaintext, self::CIPHER_MODE, $this->hashedEncryptionKey, OPENSSL_RAW_DATA, $iv);
 
@@ -180,11 +181,11 @@ readonly class SessionHandler implements SessionHandlerInterface
             throw new Exception('Encryption failed: ' . openssl_error_string());
         }
 
-        // Split HMAC and sandwich the ciphertext
-        $left = substr($integrityHmac, 0, self::HASH_HMAC_LENGTH / 2);
-        $right = substr($integrityHmac, self::HASH_HMAC_LENGTH / 2);
+        // Calculate HMAC for IV + ciphertext
+        $hmac = hash_hmac(self::HASH_ALGORITHM, $iv . $ciphertext, $authKey, true);
 
-        return $right . $ciphertext . $left;
+        // Return HMAC + ciphertext
+        return $hmac . $ciphertext;
     }
 
     /**
@@ -193,7 +194,6 @@ readonly class SessionHandler implements SessionHandlerInterface
     private function deriveAuthenticationKey(): string
     {
         $salt = hash(self::HASH_ALGORITHM, session_id() . self::AUTH_STRING, true);
-
         return hash_hkdf(self::HASH_ALGORITHM, $this->encryptionKey, self::HASH_HMAC_LENGTH, self::AUTH_STRING, $salt);
     }
 
@@ -251,30 +251,22 @@ readonly class SessionHandler implements SessionHandlerInterface
             throw new Exception('Data integrity check failed - data too short');
         }
 
-        // Extract HMAC parts and ciphertext
-        $right = substr($ciphertext, 0, self::HASH_HMAC_LENGTH / 2);
-        $left = substr($ciphertext, -(self::HASH_HMAC_LENGTH / 2));
-        $ciphertext = substr($ciphertext, self::HASH_HMAC_LENGTH / 2, -(self::HASH_HMAC_LENGTH / 2));
-
-        // Decrypt
-        $plaintext = openssl_decrypt($ciphertext, self::CIPHER_MODE, $this->hashedEncryptionKey, OPENSSL_RAW_DATA, $iv);
-
-        if ($plaintext === false) {
-            throw new Exception('Decryption failed: ' . openssl_error_string());
-        }
+        // Extract HMAC and ciphertext
+        $hmac = substr($ciphertext, 0, self::HASH_HMAC_LENGTH);
+        $ciphertext = substr($ciphertext, self::HASH_HMAC_LENGTH);
 
         // Verify integrity with current session's auth key
         $authKey = $this->deriveAuthenticationKey();
-        $extractedHmac = $left . $right;
-        $calculatedHmac = hash_hmac(self::HASH_ALGORITHM, $iv . $plaintext, $authKey, true);
+        $calculatedHmac = hash_hmac(self::HASH_ALGORITHM, $iv . $ciphertext, $authKey, true);
 
-        if (!hash_equals($extractedHmac, $calculatedHmac)) {
+        if (!hash_equals($hmac, $calculatedHmac)) {
             throw new Exception('HMAC verification failed');
         }
 
-        return $plaintext;
+        // Decrypt
+        return openssl_decrypt($ciphertext, self::CIPHER_MODE, $this->hashedEncryptionKey, OPENSSL_RAW_DATA, $iv)
+            ?: throw new Exception('Decryption failed: ' . openssl_error_string());
     }
-
 
     /**
      * Destroy a session
