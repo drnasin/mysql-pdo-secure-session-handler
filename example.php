@@ -45,7 +45,7 @@ $dbSettings = [
 $dsn = sprintf('mysql:host=%s;dbname=%s;port=%d;charset=%s', $dbSettings['host'], $dbSettings['name'],
     $dbSettings['port'], $dbSettings['charset']);
 
-$pdo = new \PDO($dsn, $dbSettings['username'], $dbSettings['password']);
+$pdo = new PDO($dsn, $dbSettings['username'], $dbSettings['password']);
 
 /**
  * Encryption key.
@@ -53,7 +53,12 @@ $pdo = new \PDO($dsn, $dbSettings['username'], $dbSettings['password']);
  */
 $encryptionKey = trim(file_get_contents(__DIR__ . '/tests/encryption.key'));
 
-$handler = new \Drnasin\Session\SessionHandler($pdo, $dbSettings['table'], $encryptionKey);
+try {
+    $handler = new \Drnasin\Session\SessionHandler($pdo, $dbSettings['table'], $encryptionKey);
+} catch (Exception $e) {
+    error_log($e->getMessage());
+    die();
+}
 
 session_set_save_handler($handler, true);
 
@@ -78,7 +83,7 @@ for ($i = 1; $i <= 10; $i++) {
     $createdSessionIds[] = $sessionId;
 }
 
-// walk thru all opened sessions
+// walk through all opened sessions
 foreach ($createdSessionIds as $createdSessionId) {
     // and re-open each
     session_id($createdSessionId);
