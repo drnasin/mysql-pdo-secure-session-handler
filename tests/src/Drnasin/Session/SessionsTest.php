@@ -32,6 +32,7 @@
 
 namespace Drnasin\Session;
 
+use ArrayObject;
 use Exception;
 use PDO;
 use PHPUnit\Framework\Attributes\RunInSeparateProcess;
@@ -75,7 +76,7 @@ final class SessionsTest extends TestCase
 
         $_SESSION['testSession'] = 'testData';
 
-        $obj = new \stdClass();
+        $obj = new ArrayObject();
         $obj->hash = md5(__NAMESPACE__);
 
         $_SESSION['testSessionObject'] = $obj;
