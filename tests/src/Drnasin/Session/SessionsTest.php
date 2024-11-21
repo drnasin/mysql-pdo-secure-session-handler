@@ -77,7 +77,7 @@ final class SessionsTest extends TestCase
         $_SESSION['testSession'] = 'testData';
 
         $obj = new ArrayObject();
-        $obj->hash = md5(__NAMESPACE__);
+        $obj['hash'] = md5(__NAMESPACE__);
 
         $_SESSION['testSessionObject'] = $obj;
         session_write_close();
@@ -126,7 +126,7 @@ final class SessionsTest extends TestCase
     public function testObjectInSession()
     {
         $this->assertTrue(is_object($_SESSION['testSessionObject']));
-        $this->assertEquals($_SESSION['testSessionObject']->hash, md5(__NAMESPACE__));
+        $this->assertEquals($_SESSION['testSessionObject']['hash'], md5(__NAMESPACE__));
     }
 
     #[RunInSeparateProcess]

@@ -36,6 +36,7 @@ namespace Drnasin\Session;
 use PDO;
 use Exception;
 use InvalidArgumentException;
+use SessionHandlerInterface;
 
 /**
  * Class Session Save Handler.
@@ -46,41 +47,32 @@ use InvalidArgumentException;
  * @author Ante Drnasin
  * @link https://github.com/drnasin/mysql-pdo-secure-session-handler
  */
-class SessionHandler implements \SessionHandlerInterface
+readonly class SessionHandler implements SessionHandlerInterface
 {
     /**
      * Hash algorithm used
-     * @var string
      */
-    const HASH_ALGORITHM = 'SHA256';
-    /**
-     * Cipher mode used for encryption/decryption
-     * @var string
-     */
-    const CIPHER_MODE = 'AES-256-CBC';
-    /**
-     * Length (in bytes) of IV
-     * @var int
-     */
-    const IV_LENGTH = 16;
-    /**
-     * Length of integrity HMAC hash
-     * @var int
-     */
-    const HASH_HMAC_LENGTH = 32;
-    /**
-     *
-     */
-    const AUTH_STRING = 'Drnasin-Secure-Session-Handler';
+    const string HASH_ALGORITHM = 'SHA256';
 
     /**
-     * @var string
+     * Cipher mode used for encryption/decryption
      */
-    protected $hashedEncryptionKey;
+    const string CIPHER_MODE = 'AES-256-CBC';
+
     /**
-     * @var string
+     * Length (in bytes) of IV
      */
-    protected $authenticationKey;
+    const int IV_LENGTH = 16;
+
+    /**
+     * Length of integrity HMAC hash
+     */
+    const int HASH_HMAC_LENGTH = 32;
+
+    const string AUTH_STRING = 'Drnasin-Secure-Session-Handler';
+
+    protected string $hashedEncryptionKey;
+    protected string $authenticationKey;
 
     /**
      * SessionHandler constructor.
@@ -91,26 +83,14 @@ class SessionHandler implements \SessionHandlerInterface
      * @param string $encryptionKey
      * @throws Exception
      */
-    public function __construct(
-        private PDO $pdo, private readonly string $tableName, private readonly string $encryptionKey
-    ) {
-        if (!extension_loaded('openssl')) {
-            throw new Exception('OpenSSL extension not found');
-        }
-
-        if (empty($tableName)) {
-            throw new Exception(sprintf('sessions table name is empty in %s', __METHOD__));
-        }
-
-        if (empty($encryptionKey)) {
-            throw new Exception(sprintf('encryption key is empty in %s', __METHOD__));
-        }
-
-        // not needed but just in case
-        if (self::IV_LENGTH !== openssl_cipher_iv_length(self::CIPHER_MODE)) {
-            throw new Exception(sprintf("IV length for cipher mode %s should be %s. received %s", self::CIPHER_MODE,
-                openssl_cipher_iv_length(self::CIPHER_MODE), self::IV_LENGTH));
-        }
+    public function __construct(protected PDO $pdo, protected string $tableName, protected string $encryptionKey) {
+        match (true) {
+            !extension_loaded('openssl') => throw new Exception('OpenSSL extension not found'),
+            empty($tableName) => throw new Exception('Sessions table name is empty'),
+            empty($encryptionKey) => throw new Exception('Encryption key is empty'),
+            self::IV_LENGTH !== openssl_cipher_iv_length(self::CIPHER_MODE) => throw new Exception("IV length mismatch for cipher mode " . self::CIPHER_MODE),
+            default => null
+        };
 
         // initialize PDO
         $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_SILENT);
