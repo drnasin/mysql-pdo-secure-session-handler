@@ -32,33 +32,27 @@
 
 namespace Drnasin\Session;
 
+use Exception;
 use PDO;
+use PHPUnit\Framework\Attributes\RunInSeparateProcess;
 use PHPUnit\Framework\TestCase;
 
-class SessionsTest extends TestCase
+final class SessionsTest extends TestCase
 {
-    /**
-     * @var \PDO
-     */
-    protected $pdo;
-    /**
-     * @var SessionHandler
-     */
-    protected $handler;
+    protected PDO $pdo;
+    protected SessionHandler $handler;
+    protected string $sessionId;
+
     /**
      * This is our 'general encryption key'
-     * @var string
      */
-    protected $encryptionKey;
-    /**
-     * @var string
-     */
-    protected $sessionId;
+    protected string $encryptionKey;
 
     /**
      * Hate using globals but this is a phpunit mechanism of exposing
      * php variables from phpunit.xml so it is what it is.
      * Function is called before running any tests.
+     * @throws Exception
      */
     public function setUp() : void
     {
@@ -66,11 +60,12 @@ class SessionsTest extends TestCase
             $_ENV['DB_CHARSET']);
 
         $this->pdo = new PDO($dsn, $_ENV['DB_USER'], $_ENV['DB_PASS']);
-        $this->encryptionKey = trim(file_get_contents($_ENV['TEST_ENCRYPTION_KEY_FILE']));
+
+        $this->encryptionKey = trim(file_get_contents(__DIR__ . "/../../../{$_ENV['TEST_ENCRYPTION_KEY_FILE']}"));
         $this->handler = new SessionHandler($this->pdo, $_ENV['DB_TABLENAME'], $this->encryptionKey);
 
         if (!session_set_save_handler($this->handler, true)) {
-            throw new \Exception(sprintf('session handler for testing could not be set in %s!', __METHOD__));
+            throw new Exception(sprintf('session handler for testing could not be set in %s!', __METHOD__));
         }
 
         // we need to have the "same" session id
@@ -89,8 +84,8 @@ class SessionsTest extends TestCase
 
     /**
      * Run in separate process means only setUp + testFunc are executed
-     * @runInSeparateProcess
      */
+    #[RunInSeparateProcess]
     public function testSessionExists()
     {
         $this->assertEquals($this->sessionId, session_id());
@@ -98,9 +93,7 @@ class SessionsTest extends TestCase
         $this->assertEquals('testData', $_SESSION['testSession']);
     }
 
-    /**
-     * @runInSeparateProcess
-     */
+    #[RunInSeparateProcess]
     public function testSessionChangeValue()
     {
         $this->assertTrue(isset($_SESSION['testSession']));
@@ -111,9 +104,7 @@ class SessionsTest extends TestCase
         $this->assertEquals('new data', $_SESSION['testSession']);
     }
 
-    /**
-     * @runInSeparateProcess
-     */
+    #[RunInSeparateProcess]
     public function testSessionValUnset()
     {
         $this->assertEquals($this->sessionId, session_id());
@@ -124,26 +115,20 @@ class SessionsTest extends TestCase
         $this->assertFalse(isset($_SESSION['testSession']));
     }
 
-    /**
-     * @runInSeparateProcess
-     */
+    #[RunInSeparateProcess]
     public function testSessionEncode()
     {
         $this->assertEquals(session_encode(), $this->handler->read($this->sessionId));
     }
 
-    /**
-     * @runInSeparateProcess
-     */
+    #[RunInSeparateProcess]
     public function testObjectInSession()
     {
         $this->assertTrue(is_object($_SESSION['testSessionObject']));
         $this->assertEquals($_SESSION['testSessionObject']->hash, md5(__NAMESPACE__));
     }
 
-    /**
-     * @runInSeparateProcess
-     */
+    #[RunInSeparateProcess]
     public function testDestroySession()
     {
         $this->assertTrue(isset($_SESSION['testSession']));

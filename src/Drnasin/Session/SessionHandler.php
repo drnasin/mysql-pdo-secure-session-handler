@@ -33,6 +33,10 @@
 
 namespace Drnasin\Session;
 
+use PDO;
+use Exception;
+use InvalidArgumentException;
+
 /**
  * Class Session Save Handler.
  * Mysql (PDO) session save handler with openssl session data encryption.
@@ -68,24 +72,7 @@ class SessionHandler implements \SessionHandlerInterface
      *
      */
     const AUTH_STRING = 'Drnasin-Secure-Session-Handler';
-    /**
-     * Database connection.
-     * @var \PDO
-     */
-    protected $pdo;
-    /**
-     * Name of the DB table which holds the sessions.
-     * @var string
-     */
-    protected $sessionsTableName;
-    /**
-     * 'Encryption key' used for encryption/decryption.
-     * Can be from a string (config array for example) or from a file.
-     * Just make sure you take care of trimming! (ie. openssl adds EOL at the end of output file)
-     * Keep it somewhere SAFE!
-     * @var string
-     */
-    protected $encryptionKey;
+
     /**
      * @var string
      */
@@ -99,48 +86,56 @@ class SessionHandler implements \SessionHandlerInterface
      * SessionHandler constructor.
      * Make sure $encryptionKey is trimmed!
      *
-     * @param \PDO   $pdo
-     * @param string $sessionsTableName
+     * @param PDO $pdo
+     * @param string $tableName
      * @param string $encryptionKey
-     *
-     * @throws \Exception
+     * @throws Exception
      */
-    public function __construct(\PDO $pdo, $sessionsTableName, $encryptionKey)
-    {
+    public function __construct(
+        private PDO $pdo, private readonly string $tableName, private readonly string $encryptionKey
+    ) {
         if (!extension_loaded('openssl')) {
-            throw new \Exception('openssl extension not found');
+            throw new Exception('OpenSSL extension not found');
         }
 
-        if (!extension_loaded('pdo_mysql')) {
-            throw new \Exception('pdo_mysql extension not found');
+        if (empty($tableName)) {
+            throw new Exception(sprintf('sessions table name is empty in %s', __METHOD__));
         }
-
-        // silence the error reporting from PDO
-        $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_SILENT);
-        $this->pdo = $pdo;
-
-        if (empty($sessionsTableName)) {
-            throw new \Exception(sprintf('sessions table name is empty in %s', __METHOD__));
-        }
-        $this->sessionsTableName = (string)$sessionsTableName;
 
         if (empty($encryptionKey)) {
-            throw new \Exception(sprintf('encryption key is empty in %s', __METHOD__));
+            throw new Exception(sprintf('encryption key is empty in %s', __METHOD__));
         }
 
-        $this->encryptionKey = $encryptionKey;
+        // not needed but just in case
+        if (self::IV_LENGTH !== openssl_cipher_iv_length(self::CIPHER_MODE)) {
+            throw new Exception(sprintf("IV length for cipher mode %s should be %s. received %s", self::CIPHER_MODE,
+                openssl_cipher_iv_length(self::CIPHER_MODE), self::IV_LENGTH));
+        }
+
+        // initialize PDO
+        $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_SILENT);
+        $this->pdo->setAttribute(PDO::ATTR_STRINGIFY_FETCHES, false);
+
         // needed for encryption/decryption of plaintext data
         $this->hashedEncryptionKey = hash(self::HASH_ALGORITHM, $encryptionKey, true);
 
         // calculate authentication key
         $salt = hash(self::HASH_ALGORITHM, session_id() . self::AUTH_STRING, true);
         $this->authenticationKey = hash_hkdf(self::HASH_ALGORITHM, $encryptionKey, 32, self::AUTH_STRING, $salt);
+    }
 
-        // not needed but just in case
-        if (self::IV_LENGTH !== openssl_cipher_iv_length(self::CIPHER_MODE)) {
-            throw new \Exception(sprintf("IV length for cipher mode %s should be %s. received %s", self::CIPHER_MODE,
-                openssl_cipher_iv_length(self::CIPHER_MODE), self::IV_LENGTH));
+    public static function create(
+        PDO $pdo, string $tableName, string $encryptionKey
+    ): self {
+        if (empty($tableName)) {
+            throw new InvalidArgumentException('Table name cannot be empty');
         }
+
+        if (empty($encryptionKey)) {
+            throw new InvalidArgumentException('Encryption key cannot be empty');
+        }
+
+        return new self($pdo, $tableName, $encryptionKey);
     }
 
     /**
@@ -155,73 +150,71 @@ class SessionHandler implements \SessionHandlerInterface
      * Please note sessions use an alternative serialization method (see php.ini)
      *
      * @return bool The return value (usually TRUE on success, FALSE on failure).
-     * @throws \Exception
+     * @throws Exception
      * @since 5.4.0
      */
-    public function write($session_id, $session_data)
+    public function write(string $id, string $data): bool
     {
-        /**
-         * First generate the session initialisation vector (IV) and then
-         * use it together with hashed encryption key to encrypt the data, then write the session to the database.
-         * @important "IV" must have the same length as the cipher block size (128 bits, aka 16 bytes for AES256).
-         * @var string of (psuedo) bytes (in binary form, you need to bin2hex the data if you want hexadecimal
-         * representation.
-         */
-        $iv = openssl_random_pseudo_bytes(self::IV_LENGTH, $strong);
+        try {
+            $iv = random_bytes(self::IV_LENGTH);
+            $encodedEncryptedData = base64_encode($this->encrypt($data, $iv));
 
-        // should NEVER happen for our cipher mode.
-        if (!$strong) {
-            throw new \Exception(sprintf('generated IV for the cipher mode "%s" is not strong enough',
-                self::CIPHER_MODE));
+            $stmt = $this->pdo->prepare("REPLACE INTO {$this->tableName} 
+                (session_id, modified, session_data, lifetime, iv) 
+                VALUES (:session_id, NOW(), :session_data, :lifetime, :iv)");
+
+            return $stmt->execute([
+                'session_id'   => $id,
+                'session_data' => $encodedEncryptedData,
+                'lifetime'     => ini_get('session.gc_maxlifetime'),
+                'iv'           => $iv
+            ]);
+        } catch (Exception $e) {
+            error_log("Session write error: " . $e->getMessage());
+            return false;
         }
-
-        // encrypt the data and immediately encode it so we can store it to the database
-        $encodedEncryptedData = base64_encode($this->encrypt($session_data, $iv));
-        unset($session_data); // cleaning
-
-        $sql = $this->pdo->prepare("REPLACE INTO {$this->sessionsTableName} (session_id, modified, session_data, lifetime, iv) 
-                                    VALUES (:session_id, NOW(), :session_data, :lifetime, :iv)");
-
-        return $sql->execute([
-            'session_id'   => $session_id,
-            'session_data' => $encodedEncryptedData,
-            'lifetime'     => ini_get('session.gc_maxlifetime'),
-            'iv'           => $iv
-        ]);
     }
 
     /**
      * Encrypts the data with given cipher.
      * adds HMAC checksum block of hashes to $ciphertext
      *
-     * @param $plaintext
-     * @param $iv string binary initialisation vector
+     * @param string $plaintext
+     * @param string $iv binary initialisation vector
      *
      * @return string (raw binary data)
      *         format: rightPartOfIntegrityHmac . ciphertext . leftPartOfIntegrityHmac;
-     * @throws \Exception
+     * @throws Exception
      */
-    protected function encrypt($plaintext, $iv)
+    private function encrypt(string $plaintext, string $iv): string
     {
+        $authKey = $this->deriveAuthenticationKey();
 
-        // calculate the "integrity" hmac, use authenticationKey
-        $integrityHashHmac = hash_hmac(self::HASH_ALGORITHM, $iv . $plaintext, $this->authenticationKey, true);
+        // Calculate integrity HMAC
+        $integrityHmac = hash_hmac(self::HASH_ALGORITHM, $iv . $plaintext, $authKey, true);
 
-        // encrypt the raw data
+        // Encrypt the data
         $ciphertext = openssl_encrypt($plaintext, self::CIPHER_MODE, $this->hashedEncryptionKey, OPENSSL_RAW_DATA, $iv);
 
-        unset($plaintext); // cleaning
-
-        if (false === $ciphertext) {
-            throw new \Exception(sprintf('data encryption failed in %s. error: %s', __METHOD__,
-                openssl_error_string()));
+        if ($ciphertext === false) {
+            throw new Exception('Encryption failed: ' . openssl_error_string());
         }
 
-        // break the integrity hmac in hallf and glue ciphertext in betwean R and L
-        $left = substr($integrityHashHmac, 0, self::HASH_HMAC_LENGTH / 2);
-        $right = substr($integrityHashHmac, self::HASH_HMAC_LENGTH / 2);
+        // Split HMAC and sandwich the ciphertext
+        $left = substr($integrityHmac, 0, self::HASH_HMAC_LENGTH / 2);
+        $right = substr($integrityHmac, self::HASH_HMAC_LENGTH / 2);
 
         return $right . $ciphertext . $left;
+    }
+
+    /**
+     * Derives the authentication key for the current session
+     */
+    private function deriveAuthenticationKey(): string
+    {
+        $salt = hash(self::HASH_ALGORITHM, session_id() . self::AUTH_STRING, true);
+
+        return hash_hkdf(self::HASH_ALGORITHM, $this->encryptionKey, self::HASH_HMAC_LENGTH, self::AUTH_STRING, $salt);
     }
 
     /**
@@ -229,31 +222,35 @@ class SessionHandler implements \SessionHandlerInterface
      * and encryption key and return the decrypted data.
      * @link http://php.net/manual/en/sessionhandlerinterface.read.php
      *
-     * @param string $session_id The session id to read data for.
+     * @param string $id The session id to read data for.
      *
-     * @return string
+     * @return string|false
      * Returns an encoded string of the read data.
      * If nothing was read, it must return an empty string.
      * @since 5.4.0
-     * @throws \Exception
+     * @throws Exception
      */
-    public function read($session_id)
+    public function read(string $id): string|false
     {
-        $sql = $this->pdo->prepare("SELECT session_data, iv
-                                    FROM {$this->sessionsTableName}
-                                    WHERE session_id = :session_id 
-                                    AND (modified + INTERVAL lifetime SECOND) > NOW()");
+        try {
+            $stmt = $this->pdo->prepare("SELECT session_data, iv 
+                FROM {$this->tableName} 
+                WHERE session_id = :session_id 
+                AND (modified + INTERVAL lifetime SECOND) > NOW()");
 
-        $executed = $sql->execute([
-            'session_id' => $session_id,
-        ]);
+            if (!$stmt->execute(['session_id' => $id])) {
+                return '';
+            }
 
-        if ($executed && $sql->rowCount()) {
-            $session = $sql->fetchObject();
+            $session = $stmt->fetchObject();
+            if (!$session) {
+                return '';
+            }
 
             return $this->decrypt(base64_decode($session->session_data), $session->iv);
-        } else {
-            return '';
+        } catch (Exception $e) {
+            error_log("Session read error: " . $e->getMessage());
+            return false;
         }
     }
 
@@ -266,40 +263,38 @@ class SessionHandler implements \SessionHandlerInterface
      * @param string $iv in binary form
      *
      * @return string decrypted data
-     * @throws \Exception
+     * @throws Exception
      */
-    protected function decrypt($ciphertext, $iv)
+    private function decrypt(string $ciphertext, string $iv): string
     {
-        // integrity check
         if (strlen($ciphertext) < self::IV_LENGTH) {
-            throw new \Exception(sprintf('data integrity check failed in %s', __METHOD__));
+            throw new Exception('Data integrity check failed - data too short');
         }
 
-        // extract left and right side, glue them together to get Integrity hmac
+        // Extract HMAC parts and ciphertext
         $right = substr($ciphertext, 0, self::HASH_HMAC_LENGTH / 2);
         $left = substr($ciphertext, -(self::HASH_HMAC_LENGTH / 2));
-
-        // everything else in betwean is the real ciphertext
         $ciphertext = substr($ciphertext, self::HASH_HMAC_LENGTH / 2, -(self::HASH_HMAC_LENGTH / 2));
 
-        // decrypt the data
+        // Decrypt
         $plaintext = openssl_decrypt($ciphertext, self::CIPHER_MODE, $this->hashedEncryptionKey, OPENSSL_RAW_DATA, $iv);
-        unset($ciphertext); // cleaning
 
-        if (false === $plaintext) {
-            throw new \Exception(sprintf('data decryption failed in %s. error: %s', __METHOD__,
-                openssl_error_string()));
+        if ($plaintext === false) {
+            throw new Exception('Decryption failed: ' . openssl_error_string());
         }
 
-        $extractedIntegrityHmac = $left . $right;
-        // calculate integrity hmac and compare with extracted
-        $calculatedIntegrityHmac = hash_hmac(self::HASH_ALGORITHM, $iv . $plaintext, $this->authenticationKey, true);
-        if (!hash_equals($extractedIntegrityHmac, $calculatedIntegrityHmac)) {
-            throw new \Exception('data hash hmac mismatch.');
+        // Verify integrity with current session's auth key
+        $authKey = $this->deriveAuthenticationKey();
+        $extractedHmac = $left . $right;
+        $calculatedHmac = hash_hmac(self::HASH_ALGORITHM, $iv . $plaintext, $authKey, true);
+
+        if (!hash_equals($extractedHmac, $calculatedHmac)) {
+            throw new Exception('HMAC verification failed');
         }
 
         return $plaintext;
     }
+
 
     /**
      * Destroy a session
@@ -311,44 +306,53 @@ class SessionHandler implements \SessionHandlerInterface
      * The return value (usually TRUE on success, FALSE on failure).
      * @since 5.4.0
      */
-    public function destroy($session_id)
+    public function destroy(string $id): bool
     {
-        return $this->pdo->prepare("DELETE FROM {$this->sessionsTableName} WHERE session_id = :session_id")->execute([
-            'session_id' => $session_id
-        ]);
+        try {
+            return $this->pdo->prepare("DELETE FROM {$this->tableName} WHERE session_id = :session_id")->execute(['session_id' => $id]);
+        } catch (Exception $e) {
+            error_log("Session destroy error: " . $e->getMessage());
+            return false;
+        }
     }
 
     /**
      * Cleanup old sessions
      * @link http://php.net/manual/en/sessionhandlerinterface.gc.php
      *
-     * @param int $maxlifetime
+     * @param ?int $max_lifetime
      * Sessions that have not updated for
      * the last maxlifetime seconds will be removed.
      *
      * @return bool
+     *
      * The return value (usually TRUE on success, FALSE on failure).
      * @since 5.4.0
      */
-    public function gc($maxlifetime)
+    public function gc(?int $max_lifetime = null): int|false
     {
-        return $this->pdo->prepare("DELETE FROM {$this->sessionsTableName} WHERE (modified + INTERVAL lifetime SECOND) < NOW()")
-                         ->execute();
+        try {
+            return $this->pdo->prepare("DELETE FROM {$this->tableName} 
+                WHERE (modified + INTERVAL lifetime SECOND) < NOW()")->execute();
+        } catch (Exception $e) {
+            error_log("Session GC error: " . $e->getMessage());
+            return false;
+        }
     }
 
     /**
      * Initialize session
      * @link http://php.net/manual/en/sessionhandlerinterface.open.php
      *
-     * @param string $save_path The path where to store/retrieve the session.
-     * @param string $session_name The session name.
+     * @param string $path The path where to store/retrieve the session.
+     * @param string $name The session name.
      *
      * @return bool
      * The return value (usually TRUE on success, FALSE on failure).
      * @since 5.4.0
      * @codeCoverageIgnore
      */
-    public function open($save_path, $session_name)
+    public function open(string $path, string $name): bool
     {
         return true;
     }
@@ -361,8 +365,27 @@ class SessionHandler implements \SessionHandlerInterface
      * @since 5.4.0
      * @codeCoverageIgnore
      */
-    public function close()
+    public function close(): bool
     {
         return true;
+    }
+
+    public function createTable(): bool
+    {
+        $sql = "CREATE TABLE IF NOT EXISTS {$this->tableName} (
+            session_id VARCHAR(128) NOT NULL PRIMARY KEY,
+            modified TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            session_data MEDIUMTEXT NOT NULL,
+            lifetime INT NOT NULL,
+            iv VARBINARY(16) NOT NULL,
+            INDEX idx_modified_lifetime (modified, lifetime)
+        ) ENGINE=InnoDB";
+
+        try {
+            return $this->pdo->exec($sql) !== false;
+        } catch (Exception $e) {
+            error_log("Create table error: " . $e->getMessage());
+            return false;
+        }
     }
 }
