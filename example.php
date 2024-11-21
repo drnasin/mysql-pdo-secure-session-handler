@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 include_once __DIR__ . '/vendor/autoload.php';
 
+use Drnasin\Session\SessionHandler;
+
 readonly class DatabaseConfig
 {
     public function __construct(
@@ -63,7 +65,7 @@ class SessionManager
     private function initializeSessionHandler(): void
     {
         try {
-            $handler = new \Drnasin\Session\SessionHandler(
+            $handler = new SessionHandler(
                 $this->pdo,
                 $this->config->table,
                 $this->encryptionKey
@@ -93,7 +95,6 @@ class SessionManager
             session_write_close();
 
             $this->sessionIds[] = $sessionId;
-
         }
 
         echo "Created {$count} sessions." . PHP_EOL;
