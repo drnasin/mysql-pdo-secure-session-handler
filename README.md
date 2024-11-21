@@ -32,9 +32,9 @@ As per cipher mode used (CBC in this case) data are encrypted using:\
                                        cipher mode used (AES = 256 bits = 32 bytes -> meaning: generated "IV" has to be 32 bytes long)
 
 ### Database
-.sql file (mysql dialect) is provided in *schema* dir.
+@see SessionHandler::createTable()
 
-mysql tip: BINARY field type would also work
+https://github.com/drnasin/mysql-pdo-secure-session-handler/blob/336143844bd89ee88daa2ff20058798f742c83f3/src/Drnasin/Session/SessionHandler.php#L373
 
 ### Usage
 
