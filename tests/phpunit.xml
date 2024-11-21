@@ -29,8 +29,20 @@
   ~ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN     ~
   ~ THE SOFTWARE.                                                                 ~
   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
-<phpunit colors="true" strict="true" bootstrap="../vendor/autoload.php" beStrictAboutTestsThatDoNotTestAnything="true"
-         convertErrorsToExceptions="true" convertNoticesToExceptions="true" convertWarningsToExceptions="true">
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/11.0/phpunit.xsd"
+         bootstrap="../vendor/autoload.php"
+         colors="true"
+         beStrictAboutTestsThatDoNotTestAnything="true"
+         failOnRisky="true"
+         failOnWarning="true"
+
+         displayDetailsOnTestsThatTriggerDeprecations="true"
+         displayDetailsOnTestsThatTriggerErrors="true"
+         displayDetailsOnTestsThatTriggerNotices="true"
+         displayDetailsOnTestsThatTriggerWarnings="true"
+         displayDetailsOnPhpunitDeprecations="true"
+>
     <testsuites>
         <testsuite name="Unit tests">
             <file>./src/Drnasin/Session/SessionHandlerTest.php</file>
@@ -39,21 +51,17 @@
             <file>./src/Drnasin/Session/SessionsTest.php</file>
         </testsuite>
     </testsuites>
-    <filter>
-        <whitelist>
-            <directory suffix=".php">../src/</directory>
-        </whitelist>
-    </filter>
-    <logging>
-        <log type="coverage-html" target="code-coverage-report" title="PHPUnit" charset="UTF-8" yui="true" highlight="true"
-             lowUpperBound="35" highLowerBound="70"/>
-    </logging>
+    <source>
+        <include>
+            <directory suffix=".php">src</directory>
+        </include>
+    </source>
     <php>
         <env name="DB_DSN" value="mysql:host=%s;dbname=%s;port=%d;charset=%s"/>
         <env name="DB_HOST" value="localhost"/>
         <env name="DB_PORT" value="3306"/>
         <env name="DB_USER" value="root"/>
-        <env name="DB_PASS" value="root"/>
+        <env name="DB_PASS" value=""/>
         <env name="DB_NAME" value="sessions"/>
         <env name="DB_TABLENAME" value="sessions_test"/>
         <env name="DB_CHARSET" value="utf8"/>
