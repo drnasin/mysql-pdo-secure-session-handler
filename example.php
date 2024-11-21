@@ -97,7 +97,7 @@ class SessionManager
             $this->sessionIds[] = $sessionId;
         }
 
-        echo "Created {$count} sessions." . PHP_EOL;
+        echo "✓ Created {$count} sessions." . PHP_EOL;
     }
 
     public function updateSessions(): void
@@ -112,7 +112,7 @@ class SessionManager
             session_write_close();
             $updated++;
         }
-        echo "Updated value in {$updated}" . PHP_EOL;
+        echo "✓ Updated value in {$updated}" . PHP_EOL;
     }
 
     public function destroySessions(): void
@@ -127,7 +127,7 @@ class SessionManager
             }
         }
 
-        echo "Destroyed {$destroyed} sessions." . PHP_EOL;
+        echo "✓ Destroyed {$destroyed} sessions." . PHP_EOL;
 
         ob_end_flush();
     }
@@ -149,7 +149,7 @@ $encryptionKey = trim(file_get_contents(__DIR__ . '/tests/encryption.key'));
 // Usage
 try {
     $sessionManager = new SessionManager($dbConfig, $encryptionKey);
-    $sessionManager->createSessions(1000);
+    $sessionManager->createSessions(100);
     $sessionManager->updateSessions();
     $sessionManager->destroySessions();
 } catch (Exception $e) {
