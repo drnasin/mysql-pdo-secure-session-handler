@@ -63,7 +63,7 @@ final class SessionsTest extends TestCase
         $this->pdo = new PDO($dsn, $_ENV['DB_USER'], $_ENV['DB_PASS']);
 
         $this->encryptionKey = trim(file_get_contents(__DIR__ . "/../../../{$_ENV['TEST_ENCRYPTION_KEY_FILE']}"));
-        $this->handler = new SessionHandler($this->pdo, $_ENV['DB_TABLENAME'], $this->encryptionKey);
+        $this->handler = SessionHandler::create($this->pdo, $_ENV['DB_TABLENAME'], $this->encryptionKey);
 
         if (!session_set_save_handler($this->handler, true)) {
             throw new Exception(sprintf('session handler for testing could not be set in %s!', __METHOD__));

@@ -13,13 +13,16 @@ final class SessionHandlerTest extends TestCase
     protected SessionHandler $handler;
     protected string $encryptionKey;
 
+    /**
+     * @throws Exception
+     */
     public function setUp(): void
     {
         $dsn = sprintf($_ENV['DB_DSN'], $_ENV['DB_HOST'], $_ENV['DB_NAME'], $_ENV['DB_PORT'], $_ENV['DB_CHARSET']);
         $this->pdo = new \PDO($dsn, $_ENV['DB_USER'], $_ENV['DB_PASS']);
 
         $this->encryptionKey = trim(file_get_contents(__DIR__ . "/../../../{$_ENV['TEST_ENCRYPTION_KEY_FILE']}"));
-        $this->handler = new SessionHandler($this->pdo, $_ENV['DB_TABLENAME'], $this->encryptionKey);
+        $this->handler = SessionHandler::create($this->pdo, $_ENV['DB_TABLENAME'], $this->encryptionKey);
         $this->handler->createTable();
     }
 
@@ -29,7 +32,7 @@ final class SessionHandlerTest extends TestCase
     #[DataProvider('sessionProvider')]
     public function testUnknownTableName(string $sessionId, string $sessionData): void
     {
-        $handler = new SessionHandler($this->pdo, 'NonExistingTable', $this->encryptionKey);
+        $handler = SessionHandler::create($this->pdo, 'NonExistingTable', $this->encryptionKey);
         $this->assertFalse($handler->write($sessionId, $sessionData));
     }
 

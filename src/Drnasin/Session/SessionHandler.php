@@ -46,6 +46,7 @@ use SessionHandlerInterface;
  * @package Drnasin\Session
  * @author Ante Drnasin
  * @link https://github.com/drnasin/mysql-pdo-secure-session-handler
+ *
  */
 readonly class SessionHandler implements SessionHandlerInterface
 {
