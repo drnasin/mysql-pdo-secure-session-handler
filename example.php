@@ -1,113 +1,157 @@
 <?php
+declare(strict_types=1);
+
 /**********************************************************************************
- * Created by Ante Drnasin - http://www.drnasin.com                               *
- * Copyright (c) 2017. All rights reserved.                                       *
- *                                                                                *
- * Project Name: Session Save Handler                                             *
- * Repository: https://github.com/drnasin/mysql-pdo-secure-session-handler        *
- *                                                                                *
- * File: example.php                                                              *
- * Last Modified: 30.5.2017 0:15                                                  *
- *                                                                                *
- * The MIT License                                                                *
- *                                                                                *
- * Permission is hereby granted, free of charge, to any person obtaining a copy   *
- * of this software and associated documentation files (the "Software"), to deal  *
- * in the Software without restriction, including without limitation the rights   *
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell      *
- * copies of the Software, and to permit persons to whom the Software is          *
- * furnished to do so, subject to the following conditions:                       *
- *                                                                                *
- * The above copyright notice and this permission notice shall be included in     *
- * all copies or substantial portions of the Software.                            *
- *                                                                                *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR     *
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,       *
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE    *
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER         *
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,  *
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN      *
- * THE SOFTWARE.                                                                  *
+ * Updated for PHP 8.3
+ * Original created by Ante Drnasin - http://www.drnasin.com
+ * Modified version includes modern PHP features and type safety
  **********************************************************************************/
 
 include_once __DIR__ . '/vendor/autoload.php';
 
-$dbSettings = [
-    'host'     => '127.0.0.1',
-    'port'     => '3306',
-    'name'     => 'sessions',
-    'table'    => 'sessions_test',
-    'username' => 'root',
-    'password' => '',
-    'charset'  => 'utf8',
-];
-// set up PDO
-$dsn = sprintf('mysql:host=%s;dbname=%s;port=%d;charset=%s', $dbSettings['host'], $dbSettings['name'],
-    $dbSettings['port'], $dbSettings['charset']);
+readonly class DatabaseConfig
+{
+    public function __construct(
+        public string $host,
+        public int $port,
+        public string $name,
+        public string $table,
+        public string $username,
+        public string $password,
+        public string $charset,
+    ) {}
 
-$pdo = new PDO($dsn, $dbSettings['username'], $dbSettings['password']);
-
-/**
- * Encryption key.
- * make sure you keep it SAFE otherwise no sessions can be decrypted!
- */
-$encryptionKey = trim(file_get_contents(__DIR__ . '/tests/encryption.key'));
-
-try {
-    $handler = new \Drnasin\Session\SessionHandler($pdo, $dbSettings['table'], $encryptionKey);
-} catch (Exception $e) {
-    error_log($e->getMessage());
-    die();
-}
-
-session_set_save_handler($handler, true);
-
-// we need output buffering because we will use session_start() many time
-ob_start();
-$createdSessionIds = [];
-
-//open 10 sessions and assign values to the SAME variable in every session
-for ($i = 1; $i <= 10; $i++) {
-    // generate session id
-    $sessionId = session_create_id();
-    // set our created session id as session id of next created session
-    session_id($sessionId);
-    //now start/create the session withour id
-    session_start();
-    //access the session via superglobal and set value of key 'someKey'
-    $_SESSION['someKey'] = sprintf("Setting initial value of var '%s' in session %s", 'someKey', $sessionId);
-    // explicitly call session_write_close() (not destroy!) because in the next iteration we are again opening a new session
-    session_write_close();
-
-    //store opened sessionId and move on
-    $createdSessionIds[] = $sessionId;
-}
-
-// walk through all opened sessions
-foreach ($createdSessionIds as $createdSessionId) {
-    // and re-open each
-    session_id($createdSessionId);
-    session_start();
-    //print value of someKey in that session
-    echo $_SESSION["someKey"], PHP_EOL;
-    // change the value
-    $_SESSION["someKey"] = sprintf("Updated value of var '%s' in session %s", 'someKey', $createdSessionId);
-    echo $_SESSION["someKey"], PHP_EOL;
-    // again, explicit call becaue of the next iteration.
-    session_write_close();
-}
-
-//destroy all created sessions
-foreach ($createdSessionIds as $createdSessionId) {
-    // set session id
-    session_id($createdSessionId);
-    // re-open the session
-    session_start();
-    //destroy it (delete)
-    if (session_destroy()) {
-        echo "Session ", $createdSessionId, " destroyed.", PHP_EOL;
+    public function getDsn(): string
+    {
+        return sprintf(
+            'mysql:host=%s;dbname=%s;port=%d;charset=%s',
+            $this->host,
+            $this->name,
+            $this->port,
+            $this->charset
+        );
     }
 }
 
-// flush the buffer
-ob_end_flush();
+class SessionManager
+{
+    private readonly PDO $pdo;
+    private array $sessionIds = [];
+
+    public function __construct(
+        private readonly DatabaseConfig $config,
+        private readonly string $encryptionKey
+    ) {
+        $this->initializePdo();
+        $this->initializeSessionHandler();
+    }
+
+    private function initializePdo(): void
+    {
+        $this->pdo = new PDO(
+            $this->config->getDsn(),
+            $this->config->username,
+            $this->config->password,
+            [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                PDO::ATTR_EMULATE_PREPARES => false,
+            ]
+        );
+    }
+
+    private function initializeSessionHandler(): void
+    {
+        try {
+            $handler = new \Drnasin\Session\SessionHandler(
+                $this->pdo,
+                $this->config->table,
+                $this->encryptionKey
+            );
+            session_set_save_handler($handler, true);
+        } catch (Exception $e) {
+            error_log($e->getMessage());
+            throw new RuntimeException('Failed to initialize session handler', previous: $e);
+        }
+    }
+
+    public function createSessions(int $count): void
+    {
+        ob_start();
+
+        for ($i = 1; $i <= $count; $i++) {
+            $sessionId = session_create_id();
+            session_id($sessionId);
+            session_start([
+                'use_strict_mode' => 1,
+                'cookie_secure' => 1,
+                'cookie_httponly' => 1,
+                'cookie_samesite' => 'Lax'
+            ]);
+
+            $_SESSION['someKey'] = "Setting initial value of var 'someKey' in session {$sessionId}";
+            session_write_close();
+
+            $this->sessionIds[] = $sessionId;
+
+        }
+
+        echo "Created {$count} sessions." . PHP_EOL;
+    }
+
+    public function updateSessions(): void
+    {
+        $updated = 0;
+        foreach ($this->sessionIds as $sessionId) {
+            session_id($sessionId);
+            session_start();
+
+            $_SESSION["someKey"] = "Updated value of var 'someKey' in session $sessionId";
+
+            session_write_close();
+            $updated++;
+        }
+        echo "Updated value in {$updated}" . PHP_EOL;
+    }
+
+    public function destroySessions(): void
+    {
+        $destroyed = 0;
+        foreach ($this->sessionIds as $sessionId) {
+            session_id($sessionId);
+            session_start();
+
+            if (session_destroy()) {
+                $destroyed++;
+            }
+        }
+
+        echo "Destroyed {$destroyed} sessions." . PHP_EOL;
+
+        ob_end_flush();
+    }
+}
+
+// Configuration
+$dbConfig = new DatabaseConfig(
+    host: '127.0.0.1',
+    port: 3306,
+    name: 'sessions',
+    table: 'sessions_test',
+    username: 'root',
+    password: '',
+    charset: 'utf8mb4'  // Updated to utf8mb4 for full Unicode support
+);
+
+$encryptionKey = trim(file_get_contents(__DIR__ . '/tests/encryption.key'));
+
+// Usage
+try {
+    $sessionManager = new SessionManager($dbConfig, $encryptionKey);
+    $sessionManager->createSessions(1000);
+    $sessionManager->updateSessions();
+    $sessionManager->destroySessions();
+} catch (Exception $e) {
+    error_log($e->getMessage());
+    die('Session management error occurred');
+}
