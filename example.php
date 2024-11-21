@@ -89,8 +89,9 @@ class SessionManager
 
             $_SESSION["someKey"] = "Updated value of var 'someKey' in session $sessionId";
 
-            session_write_close();
-            $updated++;
+            if(session_write_close()) {
+                $updated++;
+            }
         }
         echo "✓ Updated value in {$updated}" . PHP_EOL;
     }
