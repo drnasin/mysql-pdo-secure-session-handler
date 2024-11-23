@@ -36,6 +36,7 @@ namespace Drnasin\Session;
 use PDO;
 use Exception;
 use InvalidArgumentException;
+use Random\RandomException;
 use SessionHandlerInterface;
 
 /**
@@ -70,7 +71,7 @@ readonly class SessionHandler implements SessionHandlerInterface
      */
     const int HASH_HMAC_LENGTH = 32;
 
-    const string AUTH_STRING = 'Drnasin-Secure-Session-Handler';
+    const string AUTH_STRING = 'This is my secret key';
 
     protected string $hashedEncryptionKey;
     protected string $authenticationKey;
@@ -102,8 +103,7 @@ readonly class SessionHandler implements SessionHandlerInterface
         $this->hashedEncryptionKey = hash(self::HASH_ALGORITHM, $encryptionKey, true);
 
         // calculate authentication key
-        $salt = hash(self::HASH_ALGORITHM, session_id() . self::AUTH_STRING, true);
-        $this->authenticationKey = hash_hkdf(self::HASH_ALGORITHM, $encryptionKey, 32, self::AUTH_STRING, $salt);
+        $this->authenticationKey = hash_hkdf(self::HASH_ALGORITHM, $encryptionKey, 32, self::AUTH_STRING);
     }
 
     /**
@@ -191,11 +191,11 @@ readonly class SessionHandler implements SessionHandlerInterface
 
     /**
      * Derives the authentication key for the current session
+     * @throws RandomException
      */
     private function deriveAuthenticationKey(): string
     {
-        $salt = hash(self::HASH_ALGORITHM, session_id() . self::AUTH_STRING, true);
-        return hash_hkdf(self::HASH_ALGORITHM, $this->encryptionKey, self::HASH_HMAC_LENGTH, self::AUTH_STRING, $salt);
+        return hash_hkdf(self::HASH_ALGORITHM, $this->encryptionKey, self::HASH_HMAC_LENGTH, self::AUTH_STRING);
     }
 
     /**
@@ -265,8 +265,8 @@ readonly class SessionHandler implements SessionHandlerInterface
         }
 
         // Decrypt
-        return openssl_decrypt($ciphertext, self::CIPHER_MODE, $this->hashedEncryptionKey, OPENSSL_RAW_DATA, $iv)
-            ?: throw new Exception('Decryption failed: ' . openssl_error_string());
+        return openssl_decrypt($ciphertext, self::CIPHER_MODE, $this->hashedEncryptionKey, OPENSSL_RAW_DATA,
+            $iv) ?: throw new Exception('Decryption failed: ' . openssl_error_string());
     }
 
     /**
