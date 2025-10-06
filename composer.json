@@ -1,6 +1,5 @@
 {
   "name": "drnasin/mysql-pdo-secure-session-handler",
-  "version": "1.6.0",
   "license": "MIT",
   "type": "library",
   "description": "Mysql secure session handler with openssl encryption of session data and 'per session' based lifetime.",
