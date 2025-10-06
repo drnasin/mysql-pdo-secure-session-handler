@@ -61,7 +61,7 @@ jobs:
           DB_NAME: sessions
           DB_TABLENAME: sessions_test
           DB_CHARSET: utf8mb4
-          TEST_ENCRYPTION_KEY_FILE: ./storage/enc.key
+          TEST_ENCRYPTION_KEY_FILE: tests/encryption.key
         run: composer tests
 
       - name: Upload coverage reports (optional)
