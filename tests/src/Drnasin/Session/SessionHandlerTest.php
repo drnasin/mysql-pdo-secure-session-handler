@@ -21,7 +21,18 @@ final class SessionHandlerTest extends TestCase
         $dsn = sprintf($_ENV['DB_DSN'], $_ENV['DB_HOST'], $_ENV['DB_NAME'], $_ENV['DB_PORT'], $_ENV['DB_CHARSET']);
         $this->pdo = new \PDO($dsn, $_ENV['DB_USER'], $_ENV['DB_PASS']);
 
-        $this->encryptionKey = trim(file_get_contents(__DIR__ . "/../../../{$_ENV['TEST_ENCRYPTION_KEY_FILE']}"));
+        $keyFilePath = __DIR__ . "/../../../{$_ENV['TEST_ENCRYPTION_KEY_FILE']}";
+
+        if (!file_exists($keyFilePath)) {
+            throw new \RuntimeException("Encryption key file not found at: {$keyFilePath}");
+        }
+
+        $keyContent = file_get_contents($keyFilePath);
+        if ($keyContent === false) {
+            throw new \RuntimeException("Failed to read encryption key file: {$keyFilePath}");
+        }
+
+        $this->encryptionKey = trim($keyContent);
         $this->handler = SessionHandler::create($this->pdo, $_ENV['DB_TABLENAME'], $this->encryptionKey);
         $this->handler->createTable();
     }
