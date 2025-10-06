@@ -56,6 +56,11 @@
             <directory suffix=".php">src</directory>
         </include>
     </source>
+    <coverage>
+        <report>
+            <html outputDirectory="code-coverage-report"/>
+        </report>
+    </coverage>
     <php>
         <env name="DB_DSN" value="mysql:host=%s;dbname=%s;port=%d;charset=%s"/>
         <env name="DB_HOST" value="localhost"/>
