@@ -46,10 +46,7 @@ jobs:
         run: composer install --prefer-dist --no-progress
 
       - name: Generate encryption key for tests
-        run: |
-          openssl rand -base64 -out tests/encryption.key 180
-          cat tests/encryption.key
-          ls -la tests/
+        run: openssl rand -base64 -out tests/encryption.key 180
 
       - name: Wait for MySQL
         run: |
