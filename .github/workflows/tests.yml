@@ -1,0 +1,75 @@
+name: Tests
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: sessions
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+
+    strategy:
+      matrix:
+        php-version: ['8.3']
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php-version }}
+          extensions: pdo, pdo_mysql, openssl
+          coverage: xdebug
+
+      - name: Validate composer.json
+        run: composer validate --strict
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress
+
+      - name: Generate encryption key for tests
+        run: composer gen-key-file
+
+      - name: Wait for MySQL
+        run: |
+          until mysql -h 127.0.0.1 -u root -proot -e "SELECT 1"; do
+            echo "Waiting for MySQL..."
+            sleep 2
+          done
+
+      - name: Run tests
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_USER: root
+          DB_PASS: root
+          DB_NAME: sessions
+          DB_TABLENAME: sessions_test
+          DB_CHARSET: utf8mb4
+          TEST_ENCRYPTION_KEY_FILE: ./storage/enc.key
+        run: composer tests
+
+      - name: Upload coverage reports (optional)
+        if: matrix.php-version == '8.3'
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage-report
+          path: tests/code-coverage-report/
