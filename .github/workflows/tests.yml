@@ -45,9 +45,6 @@ jobs:
       - name: Install dependencies
         run: composer install --prefer-dist --no-progress
 
-      - name: Generate encryption key for tests
-        run: composer gen-key-file
-
       - name: Wait for MySQL
         run: |
           until mysql -h 127.0.0.1 -u root -proot -e "SELECT 1"; do
