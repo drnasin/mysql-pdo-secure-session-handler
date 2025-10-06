@@ -67,7 +67,7 @@ final class SessionHandlerTest extends TestCase
 
     public function testSessionGarbageCollector(): void
     {
-        $this->assertTrue(boolval($this->handler->gc(0)));
+        $this->assertIsInt($this->handler->gc(0));
     }
 
     public function testNonExistingSessionId(): void
