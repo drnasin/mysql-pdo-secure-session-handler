@@ -20,4 +20,5 @@ jobs:
           GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
         run: |
           git remote add gitlab https://oauth2:${GITLAB_TOKEN}@gitlab.com/drnasin/mysql-pdo-secure-session-handler.git
-          git push gitlab --mirror
+          git push gitlab --all --force
+          git push gitlab --tags --force
