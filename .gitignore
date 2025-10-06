@@ -3,3 +3,4 @@ vendor
 tests/code-coverage-report
 composer.lock
 tests/.phpunit.result.cache
+CLAUDE.md
