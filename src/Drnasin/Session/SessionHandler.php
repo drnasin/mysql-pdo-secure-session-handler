@@ -36,7 +36,6 @@ namespace Drnasin\Session;
 use PDO;
 use Exception;
 use InvalidArgumentException;
-use Random\RandomException;
 use SessionHandlerInterface;
 
 /**
@@ -78,7 +77,6 @@ readonly class SessionHandler implements SessionHandlerInterface
 
     /**
      * SessionHandler constructor.
-     * Make sure $encryptionKey is trimmed!
      *
      * @param PDO $pdo
      * @param string $tableName
@@ -102,7 +100,7 @@ readonly class SessionHandler implements SessionHandlerInterface
         // needed for encryption/decryption of plaintext data
         $this->hashedEncryptionKey = hash(self::HASH_ALGORITHM, $encryptionKey, true);
 
-        // calculate authentication key
+        // calculate an authentication key
         $this->authenticationKey = hash_hkdf(self::HASH_ALGORITHM, $encryptionKey, 32, self::AUTH_STRING);
     }
 
@@ -127,8 +125,8 @@ readonly class SessionHandler implements SessionHandlerInterface
     }
 
     /**
-     * Workflow: Generate IV for the current session, encrypt the data using encryption key and
-     * generated IV, write the session to database. Default session lifetime (usually defaults to 1440)
+     * Workflow: Generate IV for the current session, encrypt the data using an encryption key and
+     * generated IV, write the session to a database. Default session lifetime (usually defaults to 1440)
      * is taken directly from php.ini -> session.gc_maxlifetime.
      * @link http://php.net/manual/en/sessionhandlerinterface.write.php
      *
@@ -161,8 +159,8 @@ readonly class SessionHandler implements SessionHandlerInterface
     }
 
     /**
-     * Encrypts the data with given cipher.
-     * adds HMAC checksum block of hashes to $ciphertext
+     * Encrypts the data with a given cipher.
+     * Adds HMAC checksum block of hashes to $ciphertext
      *
      * @param string $plaintext
      * @param string $iv binary initialisation vector
@@ -173,8 +171,6 @@ readonly class SessionHandler implements SessionHandlerInterface
      */
     private function encrypt(string $plaintext, string $iv): string
     {
-        $authKey = $this->deriveAuthenticationKey();
-
         // Encrypt the data
         $ciphertext = openssl_encrypt($plaintext, self::CIPHER_MODE, $this->hashedEncryptionKey, OPENSSL_RAW_DATA, $iv);
 
@@ -183,20 +179,12 @@ readonly class SessionHandler implements SessionHandlerInterface
         }
 
         // Calculate HMAC for IV + ciphertext
-        $hmac = hash_hmac(self::HASH_ALGORITHM, $iv . $ciphertext, $authKey, true);
+        $hmac = hash_hmac(self::HASH_ALGORITHM, $iv . $ciphertext, $this->authenticationKey, true);
 
         // Return HMAC + ciphertext
         return $hmac . $ciphertext;
     }
 
-    /**
-     * Derives the authentication key for the current session
-     * @throws RandomException
-     */
-    private function deriveAuthenticationKey(): string
-    {
-        return hash_hkdf(self::HASH_ALGORITHM, $this->encryptionKey, self::HASH_HMAC_LENGTH, self::AUTH_STRING);
-    }
 
     /**
      * Read the session, decrypt the data with openssl cipher method, using session IV (initialisation vector)
@@ -208,8 +196,6 @@ readonly class SessionHandler implements SessionHandlerInterface
      * @return string|false
      * Returns an encoded string of the read data.
      * If nothing was read, it must return an empty string.
-     * @since 5.4.0
-     * @throws Exception
      */
     public function read(string $id): string|false
     {
@@ -248,7 +234,7 @@ readonly class SessionHandler implements SessionHandlerInterface
      */
     private function decrypt(string $ciphertext, string $iv): string
     {
-        if (strlen($ciphertext) < self::IV_LENGTH) {
+        if (strlen($ciphertext) < self::HASH_HMAC_LENGTH) {
             throw new Exception('Data integrity check failed - data too short');
         }
 
@@ -256,9 +242,8 @@ readonly class SessionHandler implements SessionHandlerInterface
         $hmac = substr($ciphertext, 0, self::HASH_HMAC_LENGTH);
         $ciphertext = substr($ciphertext, self::HASH_HMAC_LENGTH);
 
-        // Verify integrity with current session's auth key
-        $authKey = $this->deriveAuthenticationKey();
-        $calculatedHmac = hash_hmac(self::HASH_ALGORITHM, $iv . $ciphertext, $authKey, true);
+        // Verify integrity with the current session's auth key
+        $calculatedHmac = hash_hmac(self::HASH_ALGORITHM, $iv . $ciphertext, $this->authenticationKey, true);
 
         if (!hash_equals($hmac, $calculatedHmac)) {
             throw new Exception('HMAC verification failed');
@@ -270,14 +255,14 @@ readonly class SessionHandler implements SessionHandlerInterface
     }
 
     /**
-     * Destroy a session
+     * Destroy a session.
+     * The return value (usually TRUE on success, FALSE on failure).
+     *
      * @link http://php.net/manual/en/sessionhandlerinterface.destroy.php
      *
-     * @param string $session_id The session ID being destroyed.
+     * @param string $id The session ID being destroyed.
      *
      * @return bool
-     * The return value (usually TRUE on success, FALSE on failure).
-     * @since 5.4.0
      */
     public function destroy(string $id): bool
     {
@@ -290,23 +275,24 @@ readonly class SessionHandler implements SessionHandlerInterface
     }
 
     /**
-     * Cleanup old sessions
+     * Clean up old sessions.
+     * Returns the number of deleted sessions on success, or false on failure
      * @link http://php.net/manual/en/sessionhandlerinterface.gc.php
      *
      * @param ?int $max_lifetime
      * Sessions that have not updated for
      * the last maxlifetime seconds will be removed.
      *
-     * @return bool
-     *
-     * The return value (usually TRUE on success, FALSE on failure).
-     * @since 5.4.0
+     * @return int|bool
      */
     public function gc(?int $max_lifetime = null): int|false
     {
         try {
-            return $this->pdo->prepare("DELETE FROM {$this->tableName} 
-                WHERE (modified + INTERVAL lifetime SECOND) < NOW()")->execute();
+            $stmt = $this->pdo->prepare("DELETE FROM {$this->tableName} 
+                WHERE (modified + INTERVAL lifetime SECOND) < NOW()");
+            $stmt->execute();
+            return $stmt->rowCount();
+
         } catch (Exception $e) {
             error_log("Session GC error: " . $e->getMessage());
             return false;
@@ -314,6 +300,8 @@ readonly class SessionHandler implements SessionHandlerInterface
     }
 
     /**
+     * @codeCoverageIgnore
+     *
      * Initialize session
      * @link http://php.net/manual/en/sessionhandlerinterface.open.php
      *
@@ -321,9 +309,6 @@ readonly class SessionHandler implements SessionHandlerInterface
      * @param string $name The session name.
      *
      * @return bool
-     * The return value (usually TRUE on success, FALSE on failure).
-     * @since 5.4.0
-     * @codeCoverageIgnore
      */
     public function open(string $path, string $name): bool
     {
@@ -331,18 +316,24 @@ readonly class SessionHandler implements SessionHandlerInterface
     }
 
     /**
+     * @codeCoverageIgnore
+     *
      * Close the session
+     *
      * @link http://php.net/manual/en/sessionhandlerinterface.close.php
      * @return bool
-     * The return value (usually TRUE on success, FALSE on failure).
-     * @since 5.4.0
-     * @codeCoverageIgnore
      */
     public function close(): bool
     {
         return true;
     }
 
+    /**
+     * Creates a session table if it does not already exist.
+     * Returns true on success or false on failure.
+     *
+     * @return bool
+     */
     public function createTable(): bool
     {
         $sql = "CREATE TABLE IF NOT EXISTS {$this->tableName} (
