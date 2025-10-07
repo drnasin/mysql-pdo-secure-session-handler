@@ -83,7 +83,12 @@ final class SessionsTest extends TestCase
         // we need to have the "same" session id
         $this->sessionId = md5('test');
         session_id($this->sessionId);
-        $this->assertTrue(session_start());
+        $this->assertTrue(session_start([
+            'use_strict_mode' => 1,
+            'cookie_secure' => 1,      // HTTPS only
+            'cookie_httponly' => 1,    // JavaScript cannot access
+            'cookie_samesite' => 'Lax' // CSRF protection
+        ]));
 
         $_SESSION['testSession'] = 'testData';
 
@@ -147,7 +152,12 @@ final class SessionsTest extends TestCase
         $this->assertTrue(isset($_SESSION['testSessionObject']));
         $this->assertNotEmpty($this->handler->read($this->sessionId));
         session_id($this->sessionId);
-        session_start();
+        session_start([
+            'use_strict_mode' => 1,
+            'cookie_secure' => 1,      // HTTPS only
+            'cookie_httponly' => 1,    // JavaScript cannot access
+            'cookie_samesite' => 'Lax' // CSRF protection
+        ]);
         $_SESSION = [];
         session_destroy();
 
