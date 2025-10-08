@@ -1,8 +1,7 @@
-# MySQL PDO Secure Session Handler
-
 [![Tests](https://github.com/drnasin/mysql-pdo-secure-session-handler/actions/workflows/tests.yml/badge.svg)](https://github.com/drnasin/mysql-pdo-secure-session-handler/actions/workflows/tests.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![PHP Version](https://img.shields.io/badge/PHP-%3E%3D8.3-8892BF.svg)](https://php.net)
+# MySQL PDO Secure Session Handler
 
 
 A production-ready PHP session handler that stores encrypted session data in MySQL using PDO. Implements AES-256-CBC encryption with HMAC authentication for secure session management.
