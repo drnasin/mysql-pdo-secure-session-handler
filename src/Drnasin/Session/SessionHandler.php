@@ -206,7 +206,7 @@ readonly class SessionHandler implements SessionHandlerInterface
                 AND (modified + INTERVAL lifetime SECOND) > NOW()");
 
             if (!$stmt->execute(['session_id' => $id])) {
-                return '';
+                return false;
             }
 
             $session = $stmt->fetchObject();

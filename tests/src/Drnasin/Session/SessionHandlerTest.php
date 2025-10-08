@@ -71,7 +71,7 @@ final class SessionHandlerTest extends TestCase
 
     #[DataProvider('sessionProvider')]
     #[Depends('testSessionRead')]
-    public function testSessionDestroy(string $sessionId): void
+    public function testSessionDestroy(string $sessionId, string $sessionData): void
     {
         $this->assertTrue($this->handler->destroy($sessionId));
     }
