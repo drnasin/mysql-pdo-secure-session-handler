@@ -1,16 +1,16 @@
 <?php
-namespace Drnasin\Session;
+namespace App\EncryptedSession;
 
 use Exception;
+use PDO;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Depends;
 use PHPUnit\Framework\TestCase;
-use PDO;
 
 final class SessionHandlerTest extends TestCase
 {
     protected PDO $pdo;
-    protected SessionHandler $handler;
+    protected EncryptedSessionHandler $handler;
     protected string $encryptionKey;
 
     /**
@@ -21,7 +21,7 @@ final class SessionHandlerTest extends TestCase
         $dsn = sprintf($_ENV['DB_DSN'], $_ENV['DB_HOST'], $_ENV['DB_NAME'], $_ENV['DB_PORT'], $_ENV['DB_CHARSET']);
         $this->pdo = new \PDO($dsn, $_ENV['DB_USER'], $_ENV['DB_PASS']);
 
-        $keyFilePath = __DIR__ . "/../../../{$_ENV['TEST_ENCRYPTION_KEY_FILE']}";
+        $keyFilePath = __DIR__ . "/../../{$_ENV['TEST_ENCRYPTION_KEY_FILE']}";
 
         if (!file_exists($keyFilePath)) {
             throw new \RuntimeException("Encryption key file not found at: {$keyFilePath}");
@@ -33,7 +33,7 @@ final class SessionHandlerTest extends TestCase
         }
 
         $this->encryptionKey = trim($keyContent);
-        $this->handler = SessionHandler::create($this->pdo, $_ENV['DB_TABLENAME'], $this->encryptionKey);
+        $this->handler = EncryptedSessionHandler::create($this->pdo, $_ENV['DB_TABLENAME'], $this->encryptionKey);
         $this->handler->createTable();
     }
 
@@ -43,14 +43,14 @@ final class SessionHandlerTest extends TestCase
     #[DataProvider('sessionProvider')]
     public function testUnknownTableName(string $sessionId, string $sessionData): void
     {
-        $handler = SessionHandler::create($this->pdo, 'NonExistingTable', $this->encryptionKey);
+        $handler = EncryptedSessionHandler::create($this->pdo, 'NonExistingTable', $this->encryptionKey);
         $this->assertFalse($handler->write($sessionId, $sessionData));
     }
 
     public function testConstructorUsingEmptyEncryptionKey(): void
     {
         $this->expectException(Exception::class);
-        new SessionHandler($this->pdo, $_ENV['DB_TABLENAME'], '');
+        new EncryptedSessionHandler($this->pdo, $_ENV['DB_TABLENAME'], '');
     }
 
     /**

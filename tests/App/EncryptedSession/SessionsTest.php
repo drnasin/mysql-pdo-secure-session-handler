@@ -30,7 +30,7 @@
  * THE SOFTWARE.                                                                  *
  **********************************************************************************/
 
-namespace Drnasin\Session;
+namespace App\EncryptedSession;
 
 use ArrayObject;
 use Exception;
@@ -41,7 +41,7 @@ use PHPUnit\Framework\TestCase;
 final class SessionsTest extends TestCase
 {
     protected PDO $pdo;
-    protected SessionHandler $handler;
+    protected EncryptedSessionHandler $handler;
     protected string $sessionId;
 
     /**
@@ -62,7 +62,7 @@ final class SessionsTest extends TestCase
 
         $this->pdo = new PDO($dsn, $_ENV['DB_USER'], $_ENV['DB_PASS']);
 
-        $keyFilePath = __DIR__ . "/../../../{$_ENV['TEST_ENCRYPTION_KEY_FILE']}";
+        $keyFilePath = __DIR__ . "/../../{$_ENV['TEST_ENCRYPTION_KEY_FILE']}";
 
         if (!file_exists($keyFilePath)) {
             throw new \RuntimeException("Encryption key file not found at: {$keyFilePath}");
@@ -74,7 +74,7 @@ final class SessionsTest extends TestCase
         }
 
         $this->encryptionKey = trim($keyContent);
-        $this->handler = SessionHandler::create($this->pdo, $_ENV['DB_TABLENAME'], $this->encryptionKey);
+        $this->handler = EncryptedSessionHandler::create($this->pdo, $_ENV['DB_TABLENAME'], $this->encryptionKey);
 
         if (!session_set_save_handler($this->handler, true)) {
             throw new Exception(sprintf('session handler for testing could not be set in %s!', __METHOD__));

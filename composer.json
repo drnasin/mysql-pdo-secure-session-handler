@@ -33,12 +33,12 @@
   },
   "autoload": {
     "psr-4": {
-      "Drnasin\\": "src/Drnasin"
+      "App\\": "src/App"
     }
   },
   "autoload-dev": {
     "psr-4": {
-      "Drnasin\\": "tests/src/Drnasin"
+      "App\\": "tests/App"
     }
   },
   "scripts": {

@@ -45,10 +45,10 @@
 >
     <testsuites>
         <testsuite name="Unit tests">
-            <file>./src/Drnasin/Session/SessionHandlerTest.php</file>
+            <file>./App/EncryptedSession/SessionHandlerTest.php</file>
         </testsuite>
         <testsuite name="Functional tests">
-            <file>./src/Drnasin/Session/SessionsTest.php</file>
+            <file>./App/EncryptedSession/SessionsTest.php</file>
         </testsuite>
     </testsuites>
     <source>

@@ -74,12 +74,12 @@ openssl rand -base64 -out ./storage/encryption.key 160
 ### 2. Create Database Table
 
 ```php
-use Drnasin\Session\SessionHandler;
+use src\App\EncryptedSessionHandler;
 
 $pdo = new PDO('mysql:host=localhost;dbname=myapp', 'username', 'password');
 $encryptionKey = trim(file_get_contents('./storage/encryption.key'));
 
-$handler = new SessionHandler($pdo, 'sessions', $encryptionKey);
+$handler = new EncryptedSessionHandler($pdo, 'sessions', $encryptionKey);
 $handler->createTable();
 ```
 
@@ -99,7 +99,7 @@ CREATE TABLE sessions (
 ### 3. Configure Session Handler
 
 ```php
-use Drnasin\Session\SessionHandler;
+use src\App\EncryptedSessionHandler;
 
 // Database connection
 $pdo = new PDO(
@@ -117,7 +117,7 @@ $pdo = new PDO(
 $encryptionKey = trim(file_get_contents('./storage/encryption.key'));
 
 // Initialize handler
-$handler = new SessionHandler($pdo, 'sessions', $encryptionKey);
+$handler = new EncryptedSessionHandler($pdo, 'sessions', $encryptionKey);
 session_set_save_handler($handler, true);
 
 // Start session with secure settings
@@ -141,13 +141,13 @@ $_SESSION['username'] = 'john_doe';
 <?php
 require_once 'vendor/autoload.php';
 
-use Drnasin\Session\SessionHandler;
+use src\App\EncryptedSessionHandler;
 
 // Setup
 $pdo = new PDO('mysql:host=localhost;dbname=myapp', 'user', 'pass');
 $encryptionKey = trim(file_get_contents('./storage/encryption.key'));
 
-$handler = SessionHandler::create($pdo, 'sessions', $encryptionKey);
+$handler = EncryptedSessionHandler::create($pdo, 'sessions', $encryptionKey);
 session_set_save_handler($handler, true);
 
 // Start session
@@ -166,7 +166,7 @@ $_SESSION['user'] = ['id' => 1, 'role' => 'admin'];
 <?php
 declare(strict_types=1);
 
-use Drnasin\Session\SessionHandler;
+use src\App\EncryptedSessionHandler;
 
 readonly class SessionConfig
 {
@@ -178,7 +178,7 @@ readonly class SessionConfig
 
     public function initialize(): void
     {
-        $handler = new SessionHandler(
+        $handler = new EncryptedSessionHandler(
             $this->pdo,
             $this->tableName,
             $this->encryptionKey
@@ -217,8 +217,7 @@ $config->initialize();
 // Example: Laravel Service Provider
 namespace App\Providers;
 
-use Drnasin\Session\SessionHandler;
-use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\ServiceProvider;use src\App\EncryptedSessionHandler;
 
 class CustomSessionServiceProvider extends ServiceProvider
 {
@@ -227,7 +226,7 @@ class CustomSessionServiceProvider extends ServiceProvider
         $pdo = DB::connection()->getPdo();
         $key = config('session.encryption_key');
 
-        $handler = new SessionHandler($pdo, 'sessions', $key);
+        $handler = new EncryptedSessionHandler($pdo, 'sessions', $key);
         session_set_save_handler($handler, true);
     }
 }

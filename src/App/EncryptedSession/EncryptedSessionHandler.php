@@ -31,11 +31,11 @@
  * THE SOFTWARE.                                                                  *
  **********************************************************************************/
 
-namespace Drnasin\Session;
+namespace App\EncryptedSession;
 
-use PDO;
 use Exception;
 use InvalidArgumentException;
+use PDO;
 use SessionHandlerInterface;
 
 /**
@@ -43,12 +43,12 @@ use SessionHandlerInterface;
  * Mysql (PDO) session save handler with openssl session data encryption.
  * This class encrypts the session data using the "encryption key"
  * and initialisation vector (IV) which is generated per session.
- * @package Drnasin\Session
+ *
  * @author Ante Drnasin
  * @link https://github.com/drnasin/mysql-pdo-secure-session-handler
  *
  */
-readonly class SessionHandler implements SessionHandlerInterface
+readonly class EncryptedSessionHandler implements SessionHandlerInterface
 {
     /**
      * Hash algorithm used

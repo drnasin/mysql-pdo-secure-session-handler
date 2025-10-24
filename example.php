@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 include_once __DIR__ . '/vendor/autoload.php';
 
-use Drnasin\Session\SessionHandler;
+use App\EncryptedSessionHandler;
 
 readonly class DatabaseConfig
 {
@@ -49,7 +49,7 @@ class SessionManager
     private function initializeSessionHandler(): void
     {
         try {
-            $handler = new SessionHandler($this->pdo, $this->config->table, $this->encryptionKey);
+            $handler = new EncryptedSessionHandler($this->pdo, $this->config->table, $this->encryptionKey);
             session_set_save_handler($handler, true);
         } catch (Exception $e) {
             error_log($e->getMessage());
