@@ -88,6 +88,8 @@ readonly class EncryptedSessionHandler implements SessionHandlerInterface
         match (true) {
             false === extension_loaded('openssl') => throw new Exception('OpenSSL extension not found'),
             empty($tableName) => throw new Exception('Sessions table name is empty'),
+            !preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $tableName) => throw new InvalidArgumentException('Invalid table name: only alphanumeric characters and underscores are allowed'),
+            strlen($tableName) > 64 => throw new InvalidArgumentException('Table name exceeds maximum length of 64 characters'),
             empty($encryptionKey) => throw new Exception('Encryption key is empty'),
             self::IV_LENGTH !== openssl_cipher_iv_length(self::CIPHER_MODE) => throw new Exception("IV length mismatch for cipher mode " . self::CIPHER_MODE),
             default => null

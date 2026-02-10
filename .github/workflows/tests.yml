@@ -26,7 +26,7 @@ jobs:
 
     strategy:
       matrix:
-        php-version: ['8.3']
+        php-version: ['8.3', '8.4', '8.5']
 
     steps:
       - name: Checkout code
@@ -67,9 +67,8 @@ jobs:
           TEST_ENCRYPTION_KEY_FILE: encryption.key
         run: composer tests
 
-      - name: Upload coverage reports (optional)
-        if: matrix.php-version == '8.3'
+      - name: Upload coverage reports
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-report
+          name: coverage-report-php-${{ matrix.php-version }}
           path: tests/code-coverage-report/

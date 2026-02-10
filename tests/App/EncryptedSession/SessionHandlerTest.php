@@ -2,6 +2,7 @@
 namespace App\EncryptedSession;
 
 use Exception;
+use InvalidArgumentException;
 use PDO;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Depends;
@@ -51,6 +52,25 @@ final class SessionHandlerTest extends TestCase
     {
         $this->expectException(Exception::class);
         new EncryptedSessionHandler($this->pdo, $_ENV['DB_TABLENAME'], '');
+    }
+
+    #[DataProvider('invalidTableNameProvider')]
+    public function testConstructorRejectsInvalidTableName(string $tableName): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        new EncryptedSessionHandler($this->pdo, $tableName, $this->encryptionKey);
+    }
+
+    public static function invalidTableNameProvider(): array
+    {
+        return [
+            'SQL injection'      => ['sessions; DROP TABLE users; --'],
+            'spaces'             => ['my table'],
+            'starts with digit'  => ['1sessions'],
+            'special characters' => ['table$name'],
+            'dot notation'       => ['schema.table'],
+            'too long'           => [str_repeat('a', 65)],
+        ];
     }
 
     /**
