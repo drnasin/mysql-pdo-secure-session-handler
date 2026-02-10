@@ -51,6 +51,7 @@ composer require drnasin/mysql-pdo-secure-session-handler
 
 ### Manual Installation
 
+
 ```bash
 git clone https://github.com/drnasin/mysql-pdo-secure-session-handler.git
 cd mysql-pdo-secure-session-handler
