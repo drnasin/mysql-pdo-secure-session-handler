@@ -240,14 +240,22 @@ class CustomSessionServiceProvider extends ServiceProvider
 1. **Session Write**:
    - Generate unique 16-byte IV for the session
    - Encrypt session data using AES-256-CBC with hashed encryption key + IV
-   - Calculate HMAC-SHA256 of (IV + ciphertext) for integrity verification
+   - Calculate HMAC-SHA256 over a canonical transcript of (session id, IV,
+     ciphertext) for integrity verification. The session id is length-prefixed
+     and authenticated so an encrypted blob cannot be replayed under a
+     different session id.
    - Store: `base64(HMAC + ciphertext)` and IV in database
 
 2. **Session Read**:
    - Retrieve encrypted data and IV from database
-   - Verify HMAC to ensure data integrity
+   - Verify the HMAC (bound to the requested session id) to ensure integrity
    - Decrypt data using AES-256-CBC with hashed encryption key + IV
    - Return plaintext session data to PHP
+
+> **Upgrade note:** the integrity tag now binds the session id. Sessions
+> written by versions that authenticated only (IV + ciphertext) will fail
+> verification after upgrading and are treated as invalid (users re-create
+> their session). This is a one-time effect on deploy.
 
 ### Database Schema
 
@@ -314,6 +322,7 @@ open tests/code-coverage-report/index.html
 
 - ✅ AES-256-CBC encryption with per-session IVs
 - ✅ HMAC-SHA256 authentication for tamper detection
+- ✅ Session-id-bound integrity tag (encrypted data cannot be replayed under another session id)
 - ✅ Constant-time HMAC comparison (timing attack resistant)
 - ✅ Prepared statements (SQL injection protected)
 - ✅ Validated table names (no dynamic table name injection)
