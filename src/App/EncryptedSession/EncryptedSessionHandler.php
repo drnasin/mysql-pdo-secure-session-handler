@@ -94,11 +94,12 @@ readonly class EncryptedSessionHandler implements SessionHandlerInterface
     {
         match (true) {
             false === extension_loaded('openssl') => throw new Exception('OpenSSL extension not found'),
-            empty($tableName) => throw new Exception('Sessions table name is empty'),
+            empty($tableName) => throw new InvalidArgumentException('Sessions table name is empty'),
             !preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $tableName) => throw new InvalidArgumentException('Invalid table name: only alphanumeric characters and underscores are allowed'),
             strlen($tableName) > 64 => throw new InvalidArgumentException('Table name exceeds maximum length of 64 characters'),
-            empty($encryptionKey) => throw new Exception('Encryption key is empty'),
+            empty($encryptionKey) => throw new InvalidArgumentException('Encryption key is empty'),
             self::IV_LENGTH !== openssl_cipher_iv_length(self::CIPHER_MODE) => throw new Exception("IV length mismatch for cipher mode " . self::CIPHER_MODE),
+            self::HASH_HMAC_LENGTH !== strlen(hash_hmac(self::HASH_ALGORITHM, '', 'x', true)) => throw new Exception("HASH_HMAC_LENGTH does not match output of " . self::HASH_ALGORITHM),
             default => null
         };
 
@@ -118,14 +119,6 @@ readonly class EncryptedSessionHandler implements SessionHandlerInterface
      */
     public static function create(PDO $pdo, string $tableName, string $encryptionKey): self
     {
-        if (empty($tableName)) {
-            throw new InvalidArgumentException('Table name cannot be empty');
-        }
-
-        if (empty($encryptionKey)) {
-            throw new InvalidArgumentException('Encryption key cannot be empty');
-        }
-
         return new self($pdo, $tableName, $encryptionKey);
     }
 
@@ -145,11 +138,16 @@ readonly class EncryptedSessionHandler implements SessionHandlerInterface
     {
         try {
             $iv = random_bytes(self::IV_LENGTH);
-            $encodedEncryptedData = base64_encode($this->encrypt($data, $iv));
+            $encodedEncryptedData = base64_encode($this->encrypt($id, $data, $iv));
 
-            $stmt = $this->pdo->prepare("REPLACE INTO {$this->tableName} 
-                (session_id, modified, session_data, lifetime, iv) 
-                VALUES (:session_id, NOW(), :session_data, :lifetime, :iv)");
+            $stmt = $this->pdo->prepare("INSERT INTO {$this->tableName}
+                (session_id, modified, session_data, lifetime, iv)
+                VALUES (:session_id, NOW(), :session_data, :lifetime, :iv)
+                ON DUPLICATE KEY UPDATE
+                    modified = NOW(),
+                    session_data = VALUES(session_data),
+                    lifetime = VALUES(lifetime),
+                    iv = VALUES(iv)");
 
             return $stmt->execute([
                 'session_id'   => $id,
@@ -164,17 +162,18 @@ readonly class EncryptedSessionHandler implements SessionHandlerInterface
     }
 
     /**
-     * Encrypts the data with a given cipher.
-     * Adds HMAC checksum block of hashes to $ciphertext
+     * Encrypts the plaintext and prepends an Encrypt-then-MAC integrity tag.
+     * The HMAC is bound to the session id so an authenticated blob cannot be
+     * replayed under a different session id (cross-session substitution).
      *
+     * @param string $id session id the data belongs to (authenticated, not encrypted)
      * @param string $plaintext
      * @param string $iv binary initialisation vector
      *
-     * @return string (raw binary data)
-     *         format: rightPartOfIntegrityHmac . ciphertext . leftPartOfIntegrityHmac;
+     * @return string raw binary data, layout: hmac (HASH_HMAC_LENGTH bytes) . ciphertext
      * @throws Exception
      */
-    private function encrypt(string $plaintext, string $iv): string
+    private function encrypt(string $id, string $plaintext, string $iv): string
     {
         // Encrypt the data
         $ciphertext = openssl_encrypt($plaintext, self::CIPHER_MODE, $this->hashedEncryptionKey, OPENSSL_RAW_DATA, $iv);
@@ -183,11 +182,28 @@ readonly class EncryptedSessionHandler implements SessionHandlerInterface
             throw new Exception('Encryption failed: ' . openssl_error_string());
         }
 
-        // Calculate HMAC for IV + ciphertext
-        $hmac = hash_hmac(self::HASH_ALGORITHM, $iv . $ciphertext, $this->authenticationKey, true);
+        // Calculate HMAC over a canonical transcript of (session id, IV, ciphertext).
+        // The id is length-prefixed so its variable-length boundary with the
+        // fixed-size IV is unambiguous and cannot be shifted to forge a tag
+        // that validates under a different session id.
+        $hmac = hash_hmac(self::HASH_ALGORITHM, $this->macTranscript($id, $iv, $ciphertext), $this->authenticationKey, true);
 
         // Return HMAC + ciphertext
         return $hmac . $ciphertext;
+    }
+
+    /**
+     * Canonical, unambiguous byte string authenticated by the HMAC.
+     * Length-prefixing the session id removes the id/IV boundary ambiguity.
+     *
+     * @param string $id session id
+     * @param string $iv binary IV (fixed length)
+     * @param string $ciphertext raw ciphertext
+     * @return string
+     */
+    private function macTranscript(string $id, string $iv, string $ciphertext): string
+    {
+        return pack('N', strlen($id)) . $id . $iv . $ciphertext;
     }
 
 
@@ -219,7 +235,7 @@ readonly class EncryptedSessionHandler implements SessionHandlerInterface
                 return '';
             }
 
-            return $this->decrypt(base64_decode($session->session_data), $session->iv);
+            return $this->decrypt($id, base64_decode($session->session_data), $session->iv);
         } catch (\Throwable $e) {
             error_log("Session read error: " . $e->getMessage());
             return false;
@@ -231,13 +247,14 @@ readonly class EncryptedSessionHandler implements SessionHandlerInterface
      * re-calculates every hash and compares with data from checksum,
      * if everything goes well returns decrypted data.
      *
+     * @param string $id session id the data is expected to belong to (authenticated)
      * @param string $ciphertext raw string
      * @param string $iv in binary form
      *
      * @return string decrypted data
      * @throws Exception
      */
-    private function decrypt(string $ciphertext, string $iv): string
+    private function decrypt(string $id, string $ciphertext, string $iv): string
     {
         if (strlen($ciphertext) < self::HASH_HMAC_LENGTH) {
             throw new Exception('Data integrity check failed - data too short');
@@ -247,8 +264,8 @@ readonly class EncryptedSessionHandler implements SessionHandlerInterface
         $hmac = substr($ciphertext, 0, self::HASH_HMAC_LENGTH);
         $ciphertext = substr($ciphertext, self::HASH_HMAC_LENGTH);
 
-        // Verify integrity with the current session's auth key
-        $calculatedHmac = hash_hmac(self::HASH_ALGORITHM, $iv . $ciphertext, $this->authenticationKey, true);
+        // Verify integrity over the same canonical transcript used on write
+        $calculatedHmac = hash_hmac(self::HASH_ALGORITHM, $this->macTranscript($id, $iv, $ciphertext), $this->authenticationKey, true);
 
         if (!hash_equals($hmac, $calculatedHmac)) {
             throw new Exception('HMAC verification failed');
@@ -284,15 +301,23 @@ readonly class EncryptedSessionHandler implements SessionHandlerInterface
     }
 
     /**
-     * Clean up old sessions.
-     * Returns the number of deleted sessions on success, or false on failure
+     * Clean up expired sessions.
+     * Returns the number of deleted sessions on success, or false on failure.
      * @link http://php.net/manual/en/sessionhandlerinterface.gc.php
      *
-     * @param ?int $max_lifetime
-     * Sessions that have not updated for
-     * the last maxlifetime seconds will be removed.
+     * Note: $max_lifetime (PHP's session.gc_maxlifetime) is intentionally
+     * ignored. This handler stores a per-session lifetime at write time and
+     * expires each row by its own lifetime, which is the whole point of the
+     * library. The parameter is kept only to satisfy the interface signature.
      *
-     * @return int|bool
+     * The expiry predicate (modified + INTERVAL lifetime SECOND) is computed
+     * per row and therefore cannot use an index; gc() does a full scan. This
+     * is acceptable because gc runs periodically rather than per request. A
+     * sargable alternative would require a stored expires_at column + index.
+     *
+     * @param ?int $max_lifetime Ignored (see note above).
+     *
+     * @return int|false
      */
     public function gc(?int $max_lifetime = null): int|false
     {
