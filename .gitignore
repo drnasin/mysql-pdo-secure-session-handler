@@ -2,5 +2,4 @@
 vendor
 tests/code-coverage-report
 tests/.phpunit.result.cache
-CLAUDE.md
 .claude
