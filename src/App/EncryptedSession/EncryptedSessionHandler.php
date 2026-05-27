@@ -78,6 +78,13 @@ readonly class EncryptedSessionHandler implements SessionHandlerInterface
     /**
      * SessionHandler constructor.
      *
+     * The injected PDO is used as-is; its attributes are not modified. The
+     * recommended configuration is ATTR_ERRMODE => ERRMODE_EXCEPTION (the
+     * PHP 8.0+ default) so query failures surface as PDOException. Regardless
+     * of the configured error mode, all public methods catch \Throwable and
+     * fail closed (return false / log), so a PDO left in ERRMODE_SILENT will
+     * not produce uncaught fatals.
+     *
      * @param PDO $pdo
      * @param string $tableName
      * @param string $encryptionKey
@@ -94,10 +101,6 @@ readonly class EncryptedSessionHandler implements SessionHandlerInterface
             self::IV_LENGTH !== openssl_cipher_iv_length(self::CIPHER_MODE) => throw new Exception("IV length mismatch for cipher mode " . self::CIPHER_MODE),
             default => null
         };
-
-        // initialize PDO
-        $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_SILENT);
-        $this->pdo->setAttribute(PDO::ATTR_STRINGIFY_FETCHES, false);
 
         // needed for encryption/decryption of plaintext data
         $this->hashedEncryptionKey = hash(self::HASH_ALGORITHM, $encryptionKey, true);
@@ -154,7 +157,7 @@ readonly class EncryptedSessionHandler implements SessionHandlerInterface
                 'lifetime'     => ini_get('session.gc_maxlifetime'),
                 'iv'           => $iv
             ]);
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
             error_log("Session write error: " . $e->getMessage());
             return false;
         }
@@ -217,7 +220,7 @@ readonly class EncryptedSessionHandler implements SessionHandlerInterface
             }
 
             return $this->decrypt(base64_decode($session->session_data), $session->iv);
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
             error_log("Session read error: " . $e->getMessage());
             return false;
         }
@@ -251,9 +254,13 @@ readonly class EncryptedSessionHandler implements SessionHandlerInterface
             throw new Exception('HMAC verification failed');
         }
 
-        // Decrypt
-        return openssl_decrypt($ciphertext, self::CIPHER_MODE, $this->hashedEncryptionKey, OPENSSL_RAW_DATA,
-            $iv) ?: throw new Exception('Decryption failed: ' . openssl_error_string());
+        // Decrypt. Strict === false check so a legitimately empty plaintext is not mistaken for failure.
+        $plaintext = openssl_decrypt($ciphertext, self::CIPHER_MODE, $this->hashedEncryptionKey, OPENSSL_RAW_DATA, $iv);
+        if ($plaintext === false) {
+            throw new Exception('Decryption failed: ' . openssl_error_string());
+        }
+
+        return $plaintext;
     }
 
     /**
@@ -270,7 +277,7 @@ readonly class EncryptedSessionHandler implements SessionHandlerInterface
     {
         try {
             return $this->pdo->prepare("DELETE FROM {$this->tableName} WHERE session_id = :session_id")->execute(['session_id' => $id]);
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
             error_log("Session destroy error: " . $e->getMessage());
             return false;
         }
@@ -290,12 +297,14 @@ readonly class EncryptedSessionHandler implements SessionHandlerInterface
     public function gc(?int $max_lifetime = null): int|false
     {
         try {
-            $stmt = $this->pdo->prepare("DELETE FROM {$this->tableName} 
+            $stmt = $this->pdo->prepare("DELETE FROM {$this->tableName}
                 WHERE (modified + INTERVAL lifetime SECOND) < NOW()");
-            $stmt->execute();
+            if (!$stmt->execute()) {
+                return false;
+            }
             return $stmt->rowCount();
 
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
             error_log("Session GC error: " . $e->getMessage());
             return false;
         }
@@ -349,7 +358,7 @@ readonly class EncryptedSessionHandler implements SessionHandlerInterface
 
         try {
             return $this->pdo->exec($sql) !== false;
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
             error_log("Create table error: " . $e->getMessage());
             return false;
         }

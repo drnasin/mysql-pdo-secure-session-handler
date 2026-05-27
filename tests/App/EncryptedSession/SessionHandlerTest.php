@@ -101,6 +101,28 @@ final class SessionHandlerTest extends TestCase
         $this->assertIsInt($this->handler->gc(0));
     }
 
+    /**
+     * Regression for the injected-PDO / error-handling fix: even when the
+     * caller hands the handler a PDO in ERRMODE_SILENT (so failed statements
+     * return false instead of throwing), every operation must fail closed
+     * rather than raise an uncaught Error or report false success.
+     *
+     * @throws Exception
+     */
+    public function testFailsClosedUnderSilentErrmode(): void
+    {
+        $dsn = sprintf($_ENV['DB_DSN'], $_ENV['DB_HOST'], $_ENV['DB_NAME'], $_ENV['DB_PORT'], $_ENV['DB_CHARSET']);
+        $silentPdo = new PDO($dsn, $_ENV['DB_USER'], $_ENV['DB_PASS'], [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_SILENT,
+        ]);
+
+        $handler = EncryptedSessionHandler::create($silentPdo, 'NonExistingTable', $this->encryptionKey);
+
+        $this->assertFalse($handler->write('sid', 'data'));
+        $this->assertFalse($handler->read('sid'));
+        $this->assertFalse($handler->gc(0));
+    }
+
     public function testNonExistingSessionId(): void
     {
         $nonExistingSessionId = bin2hex(openssl_random_pseudo_bytes(16));
